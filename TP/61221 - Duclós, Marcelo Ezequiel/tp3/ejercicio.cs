@@ -1,16 +1,84 @@
 using System;
 using System.Collections.Generic;
 
-
-class ListaOrdenada{
+class ListaOrdenada<T> where T : IComparable<T> {
     // Implementar acá la clase ListaOrdenada
+    List<T> Lista_Elementos = new List<T>();
+
+    public ListaOrdenada() {}
+
+    public ListaOrdenada(IEnumerable<T> elementos) {
+        foreach (var elemento in elementos) {
+            Agregar(elemento);
+        }
+    }
+
+    public void Agregar(T elemento) {
+        if (Contiene(elemento)) return;
+
+        int i = 0;
+        while (i < Lista_Elementos.Count && Lista_Elementos[i].CompareTo(elemento) < 0) {
+            i++;
+        }
+
+        Lista_Elementos.Insert(i, elemento);
+    }
+
+    public bool Contiene(T elemento) {
+        return Lista_Elementos.Contains(elemento);
+    }
+
+    public void Eliminar(T elemento) {
+        if (Lista_Elementos.Contains(elemento)) {
+            Lista_Elementos.Remove(elemento);
+        }
+    }
+
+    public int Cantidad {
+        get { return Lista_Elementos.Count; }
+    }
+
+    public T this[int i] {
+        get { return Lista_Elementos[i]; }
+    }
+
+    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion) {
+        ListaOrdenada<T> nueva = new ListaOrdenada<T>();
+        foreach (var elemento in Lista_Elementos) {
+            if (condicion(elemento)) {
+                nueva.Agregar(elemento);
+            }
+        }
+        return nueva;
+    }
 }
 
 class Contacto {
     public string Nombre { get; set; }
     public string Telefono { get; set; }
     // Implementar acá la clase Contacto
+
+    public Contacto(string nombre, string telefono) {
+        Nombre = nombre;
+        Telefono = telefono;
+    }
+
+    public override bool Equals(object obj) {
+        if (obj is Contacto c) {
+            return Nombre == c.Nombre && Telefono == c.Telefono;
+        }
+        return false;
+    }
+
+    public override int GetHashCode() {
+        return Nombre.GetHashCode() + Telefono.GetHashCode();
+    }
+
+    public int CompareTo(Contacto otro) {
+        return Nombre.CompareTo(otro.Nombre);
+    }
 }
+
 
 /// --------------------------------------------------------///
 ///   Desde aca para abajo no se puede modificar el código  ///
