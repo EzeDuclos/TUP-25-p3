@@ -1,120 +1,159 @@
 using System;
 using System.Collections.Generic;
 
+class ListaOrdenada<T> where T : IComparable<T> {
+    class Nodo {
+        public T Valor;
+        public int Cantidad; // cantidad de nodos en el subárbol con raíz en este nodo
+        Nodo Menor, Mayor;
 
- // Implementar acá la clase ListaOrdenada
-// Clase genérica ListaOrdenada que mantiene los elementos ordenados
-class ListaOrdenada<T> where T : IComparable<T>
-{
-    // Lista interna para almacenar los elementos
-    List<T> Lista_Elementos = new List<T>();
-
-    // Constructor vacío
-    public ListaOrdenada() { }
-
-    // Constructor que recibe una colección inicial de elementos
-    public ListaOrdenada(IEnumerable<T> elementos)
-    {
-        foreach (var elemento in elementos)
-        {
-            Agregar(elemento); // Agrega cada elemento manteniendo el orden
-        }
-    }
-
-    // Método para agregar un elemento a la lista
-    public void Agregar(T elemento)
-    {
-        if (Contiene(elemento)) return; // Ignora si el elemento ya existe
-
-        int i = 0;
-        // Encuentra la posición correcta para insertar el elemento
-        while (i < Lista_Elementos.Count && Lista_Elementos[i].CompareTo(elemento) < 0)
-        {
-            i++;
+        public Nodo(T valor) {
+            Valor = valor;
+            Cantidad = 1;
         }
 
-        Lista_Elementos.Insert(i, elemento); // Inserta el elemento en la posición correcta
-    }
-
-    // Método para verificar si un elemento está en la lista
-    public bool Contiene(T elemento)
-    {
-        return Lista_Elementos.Contains(elemento);
-    }
-
-    // Método para eliminar un elemento de la lista
-    public void Eliminar(T elemento)
-    {
-        if (Lista_Elementos.Contains(elemento))
-        {
-            Lista_Elementos.Remove(elemento); // Elimina el elemento si existe
+        // Actualiza la cantidad de nodos del subárbol
+        private void ActualizarCantidad() {
+            Cantidad = 1 + (Menor?.Cantidad ?? 0) + (Mayor?.Cantidad ?? 0);
         }
-    }
 
-    // Propiedad que devuelve la cantidad de elementos en la lista
-    public int Cantidad
-    {
-        get { return Lista_Elementos.Count; }
-    }
-
-    // Indexador para acceder a los elementos por posición
-    public T this[int i]
-    {
-        get { return Lista_Elementos[i]; }
-    }
-
-    // Método para filtrar elementos que cumplan una condición
-    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion)
-    {
-        ListaOrdenada<T> nueva = new ListaOrdenada<T>();
-        foreach (var elemento in Lista_Elementos)
-        {
-            if (condicion(elemento)) // Verifica si el elemento cumple la condición
-            {
-                nueva.Agregar(elemento); // Agrega el elemento a la nueva lista
+        // Busca si contiene
+        public bool Contiene(T valor) {
+            int cmp = valor.CompareTo(Valor);
+            if (cmp == 0) return true;
+            if (cmp < 0) {
+                return Menor?.Contiene(valor) ?? false;
+            } else {
+                return Mayor?.Contiene(valor) ?? false;
             }
         }
-        return nueva;
+        
+        // Inserta un valor, siempre lo inserta (ya verificado afuera), retorna el nuevo subárbol
+        public Nodo Insertar(T valor) {
+            int cmp = valor.CompareTo(Valor);
+            if (cmp < 0) {
+                Menor = Menor?.Insertar(valor) ?? new Nodo(valor);
+            } else {
+                Mayor = Mayor?.Insertar(valor) ?? new Nodo(valor);
+            }
+            ActualizarCantidad();
+            return this;
+        }
+
+        // Busca y elimina un valor, retorna el nuevo subárbol (asume que el valor existe)
+        public Nodo Eliminar(T valor) {
+            int cmp = valor.CompareTo(Valor);
+            if (cmp < 0) {
+                Menor = Menor.Eliminar(valor);
+            } else if (cmp > 0) {
+                Mayor = Mayor.Eliminar(valor);
+            } else { // Encontrado (siempre existe)
+                if (Menor == null) return Mayor;
+                if (Mayor == null) return Menor;
+
+                // Dos hijos: reemplazar por el menor de la rama Mayor
+                Nodo menor = Mayor;
+                while (menor.Menor != null) menor = menor.Menor;
+                Valor = menor.Valor;
+                Mayor = Mayor.Eliminar(menor.Valor);
+            }
+            ActualizarCantidad();
+            return this;
+        }
+
+        // Acceso por índice (inorden) usando la cantidad de nodos
+        public T Indice(int indice) {
+            int menores = Menor?.Cantidad ?? 0;
+            if (indice == menores) return Valor;
+            if (indice <  menores) return Menor.Indice(indice);
+            return Mayor.Indice(indice - menores - 1);
+        }
+
+        // Devuelve un nuevo subárbol con solo los elementos que cumplen el predicado
+        public Nodo FiltrarNodo(Predicate<T> condicion) {
+            Nodo menorFiltrado = Menor?.FiltrarNodo(condicion);
+            Nodo mayorFiltrado = Mayor?.FiltrarNodo(condicion);
+            if (condicion(Valor)) {
+                Nodo nuevo = new Nodo(Valor){
+                    Menor = menorFiltrado,
+                    Mayor = mayorFiltrado
+                };
+                nuevo.ActualizarCantidad();
+                return nuevo;
+            }
+            if (menorFiltrado == null && mayorFiltrado == null) return null;
+            if (mayorFiltrado == null) return menorFiltrado;
+            if (menorFiltrado == null) return mayorFiltrado;
+            return new Nodo(menorFiltrado.Valor);            
+        }
+    }
+
+    Nodo raiz;
+
+    public ListaOrdenada() { }
+
+    public ListaOrdenada(IEnumerable<T> coleccion) {
+        foreach (var item in coleccion) {
+            Agregar(item);
+        }
+    }
+
+    public int Cantidad => raiz?.Cantidad ?? 0;
+
+    public void Agregar(T valor) {
+        if (Contiene(valor)) return;
+        raiz = raiz?.Insertar(valor) ?? new Nodo(valor);
+    }
+
+    public void Eliminar(T valor) {
+        if (!Contiene(valor)) return;
+        raiz = raiz?.Eliminar(valor);
+    }
+
+    public bool Contiene(T valor) {
+        return raiz?.Contiene(valor) ?? false;
+    }
+
+    public ListaOrdenada<T> Filtrar(Predicate<T> condicion) {
+        return new (){ raiz = raiz?.FiltrarNodo(condicion)};
+    }
+
+    public T this[int idx] {
+        get {
+            if (idx < 0 || idx >= Cantidad) throw new IndexOutOfRangeException();
+            return raiz.Indice(idx);
+        }
     }
 }
 
-// Clase Contacto que representa un contacto con nombre y teléfono
-class Contacto : IComparable<Contacto>
-{
-    public string Nombre { get; set; } // Nombre del contacto
-    public string Telefono { get; set; } // Teléfono del contacto
+class Contacto : IComparable<Contacto> {
+    public string Nombre { get; set; }
+    public string Telefono { get; set; }
 
-// Implementar acá la clase Contacto
-    // Constructor para inicializar un contacto
-    public Contacto(string nombre, string telefono)
-    {
+    public Contacto(string nombre, string telefono) {
         Nombre = nombre;
         Telefono = telefono;
     }
 
-    // Sobrescribe Equals para comparar contactos por nombre y teléfono
-    public override bool Equals(object obj)
-    {
-        if (obj is Contacto c)
-        {
-            return Nombre == c.Nombre && Telefono == c.Telefono;
-        }
-        return false;
+    public int CompareTo(Contacto otro) {
+        if (otro == null) return 1;
+        return string.Compare(this.Nombre, otro.Nombre, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
     }
 
-    // Sobrescribe GetHashCode para garantizar un hash único basado en nombre y teléfono
-    public override int GetHashCode()
-    {
-        return Nombre.GetHashCode() + Telefono.GetHashCode();
+    public override bool Equals(object obj) {
+      return obj is Contacto otro && CompareTo(otro) == 0;
     }
 
-    // Implementa CompareTo para ordenar contactos alfabéticamente por nombre
-    public int CompareTo(Contacto otro)
-    {
-        return Nombre.CompareTo(otro.Nombre);
+    public override int GetHashCode() {
+        return HashCode.Combine(Nombre);
+    }
+
+    public override string ToString() {
+        return $"{Nombre} ({Telefono})";
     }
 }
 
+#region 
 /// --------------------------------------------------------///
 ///   Desde aca para abajo no se puede modificar el código  ///
 /// --------------------------------------------------------///
@@ -243,3 +282,4 @@ Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento i
 Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
 Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
 Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
+#endregion

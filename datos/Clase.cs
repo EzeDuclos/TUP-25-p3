@@ -23,7 +23,7 @@ class Clase : IEnumerable<Alumno> {
         foreach (var linea in File.ReadLines(origen)) {
             var texto = linea.PadRight(100,' '); 
             var resultados = texto.Substring(87).Trim();
-            var practicos  = texto.Substring(75, 15).Trim();
+            var practicos  = texto.Substring(75, 15).Trim().PadRight(3, ' ');
             texto = texto.Substring(0, 75);
 
             var matchComision = Regex.Match(texto, LineaComision);
@@ -43,6 +43,7 @@ class Clase : IEnumerable<Alumno> {
                 } else {
                     practicos = practicos.Trim();
                 }
+                practicos = practicos.PadRight(3, ' ');
                 int cantidadResultados;
                 if(!int.TryParse(resultados, out cantidadResultados)){
                     cantidadResultados = 0;
@@ -286,10 +287,14 @@ class Clase : IEnumerable<Alumno> {
             Consola.Escribir($"\n=== Comisión {comision} ===", ConsoleColor.Blue);    
             foreach (var alumno in EnComision(comision).OrdenandoPorNombre()) {
                 var emojis = alumno.Practicos.Select(p => p.Emoji).ToList();
-                var asistencia = string.Join("", emojis);
+                if(alumno.Resultado < 0){
+                    emojis[2] = "🔴";
+                }
+                var asistencia = string.Join(" ", emojis);
                 string linea = $"{alumno.Legajo} - {alumno.NombreCompleto, -40} {$"{alumno.Telefono}", -15}";
                 linea = $" {linea,-65} {alumno.Asistencias, 2}  {asistencia}   ";
-                linea += alumno.Resultado switch{ < 0 => "🔴", 0 => "", > 0 => "🟢" };
+                // linea += alumno.Resultado switch{ < 0 => "🔴", 0 => "", > 0 => "🟢" };
+
                 Consola.Escribir(linea);
             }
             Consola.Escribir($"Total alumnos en comisión {comision}: {EnComision(comision).Count()}", ConsoleColor.Yellow);

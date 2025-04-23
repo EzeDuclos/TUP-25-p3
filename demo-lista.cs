@@ -1,81 +1,172 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
-class ListaOrdenada<T> where T : IComparable<T>
-{
-    private List<T> elementos = new List<T>();
+class ListaOrdenada<T> where T : IComparable<T> {
+    // Clase interna para los nodos de la lista enlazada
+    private class Nodo {
+        public T Valor { get; set; }
+        public Nodo Siguiente { get; set; }
 
-    public ListaOrdenada() { }
-
-    public ListaOrdenada(IEnumerable<T> items)
-    {
-        foreach (var item in items)
-        {
-            Agregar(item);
+        public Nodo(T valor) {
+            Valor = valor;
+            Siguiente = null;
         }
     }
 
-    public void Agregar(T elemento)
-    {
-        if (Contiene(elemento)) return;
+    private Nodo primerNodo;
+    private int cantidad;
 
-        int index = elementos.BinarySearch(elemento);
-        if (index < 0) index = ~index;
-        elementos.Insert(index, elemento);
+    // Constructor por defecto
+    public ListaOrdenada() {
+        primerNodo = null;
+        cantidad = 0;
     }
 
-    public void Eliminar(T elemento)
-    {
-        elementos.Remove(elemento);
+    // Constructor que inicializa con una colección de elementos
+    public ListaOrdenada(IEnumerable<T> elementos) : this() { // Llama al constructor por defecto
+        foreach (var elemento in elementos) {
+            Agregar(elemento);
+        }
     }
 
-    public bool Contiene(T elemento)
-    {
-        return elementos.Contains(elemento);
+    // Propiedad para obtener la cantidad de elementos
+    public int Cantidad => cantidad;
+
+    // Indexador para acceder a los elementos por índice
+    public T this[int index] {
+        get {
+            if (index < 0 || index >= cantidad) {
+                throw new IndexOutOfRangeException("El índice está fuera del rango de la lista.");
+            }
+            Nodo actual = primerNodo!; // Sabemos que no es null si index es válido y cantidad > 0
+            for (int i = 0; i < index; i++) {
+                actual = actual.Siguiente!; // Sabemos que no será null por la validación del índice
+            }
+            return actual.Valor;
+        }
     }
 
-    public int Cantidad => elementos.Count;
+    // Agrega un elemento manteniendo el orden y sin duplicados
+    public void Agregar(T elemento) {
+        Nodo nuevoNodo = new Nodo(elemento);
+        Nodo actual    = primerNodo;
+        Nodo anterior  = null;
 
-    public T this[int indice] => elementos[indice];
+        // Buscar la posición correcta para insertar o si ya existe
+        while (actual != null && elemento.CompareTo(actual.Valor) > 0) {
+            anterior = actual;
+            actual   = actual.Siguiente;
+        }
 
-    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion)
-    {
-        return new ListaOrdenada<T>(elementos.Where(condicion));
+        // Verificar si el elemento ya existe
+        if (actual != null && elemento.CompareTo(actual.Valor) == 0) {
+            return; // Elemento duplicado, no hacer nada
+        }
+
+        // Insertar el nuevo nodo
+        if (anterior == null) {
+            // Insertar al principio
+            nuevoNodo.Siguiente = primerNodo;
+            primerNodo = nuevoNodo;
+        } else {
+            // Insertar en medio o al final
+            nuevoNodo.Siguiente = actual;
+            anterior.Siguiente  = nuevoNodo;
+        }
+        cantidad++;
+    }
+
+    // Elimina un elemento de la lista
+    public void Eliminar(T elemento) {
+        Nodo actual   = primerNodo;
+        Nodo anterior = null;
+
+        // Buscar el elemento a eliminar
+        while (actual != null && elemento.CompareTo(actual.Valor) > 0) {
+            anterior = actual;
+            actual   = actual.Siguiente;
+        }
+
+        // Verificar si el elemento se encontró
+        if (actual != null && elemento.CompareTo(actual.Valor) == 0) {
+            // Eliminar el nodo
+            if (anterior == null) {
+                // Eliminar el primer nodo
+                primerNodo = actual.Siguiente;
+            } else {
+                // Eliminar un nodo intermedio o el último
+                anterior.Siguiente = actual.Siguiente;
+            }
+            cantidad--;
+        }
+        // Si no se encontró (actual es null o el valor no coincide), no hacer nada.
+    }
+
+    // Verifica si un elemento está contenido en la lista
+    public bool Contiene(T elemento) {
+        Nodo actual = primerNodo;
+
+        // Buscar el elemento aprovechando el orden
+        while (actual != null && elemento.CompareTo(actual.Valor) > 0) {
+            actual = actual.Siguiente;
+        }
+
+        // Verificar si el elemento actual es el buscado
+        return actual != null && elemento.CompareTo(actual.Valor) == 0;
+    }
+
+    // Devuelve una nueva ListaOrdenada con los elementos que cumplen el predicado
+    public ListaOrdenada<T> Filtrar(Func<T, bool> predicado) {
+        var resultado = new ListaOrdenada<T>();
+        Nodo actual = primerNodo;
+        Nodo ultimoResultado = null; // Para optimizar la inserción en la lista resultado
+
+        while (actual != null) {
+            if (predicado(actual.Valor)) {
+                // Crear nodo directamente en la lista resultado para eficiencia
+                Nodo nuevoNodoResultado = new Nodo(actual.Valor);
+                if (resultado.primerNodo == null) {
+                    resultado.primerNodo = nuevoNodoResultado;
+                } else {
+                    ultimoResultado!.Siguiente = nuevoNodoResultado; // Sabemos que ultimoResultado no es null aquí
+                }
+                ultimoResultado = nuevoNodoResultado;
+                resultado.cantidad++;
+            }
+            actual = actual.Siguiente;
+        }
+        return resultado;
     }
 }
 
-class Contacto : IComparable<Contacto>
-{
+class Contacto : IComparable<Contacto> {
     public string Nombre { get; set; }
     public string Telefono { get; set; }
 
-    public Contacto(string nombre, string telefono)
-    {
+    public Contacto(string nombre, string telefono) {
         Nombre = nombre;
         Telefono = telefono;
     }
 
-    public int CompareTo(Contacto otro)
-    {
-        return this.Nombre.CompareTo(otro.Nombre);
+    public int CompareTo(Contacto otro) {
+        if (otro == null) return 1;
+        return string.Compare(this.Nombre, otro.Nombre, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
     }
 
-    public override bool Equals(object obj)
-    {
-        if (obj is Contacto c)
-        {
-            return this.Nombre == c.Nombre && this.Telefono == c.Telefono;
-        }
-        return false;
+    public override bool Equals(object obj) {
+      return obj is Contacto otro && CompareTo(otro) == 0;
     }
 
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Nombre, Telefono);
+    public override int GetHashCode() {
+        return HashCode.Combine(Nombre);
+    }
+
+    public override string ToString() {
+        return $"{Nombre} ({Telefono})";
     }
 }
 
+#region 
 /// --------------------------------------------------------///
 ///   Desde aca para abajo no se puede modificar el código  ///
 /// --------------------------------------------------------///
@@ -204,3 +295,4 @@ Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento i
 Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
 Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
 Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
+#endregion

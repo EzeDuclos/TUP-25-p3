@@ -2,119 +2,145 @@ using System;
 using System.Collections.Generic;
 
 
- // Implementar acá la clase ListaOrdenada
-// Clase genérica ListaOrdenada que mantiene los elementos ordenados
-class ListaOrdenada<T> where T : IComparable<T>
-{
-    // Lista interna para almacenar los elementos
-    List<T> Lista_Elementos = new List<T>();
+class ListaOrdenada<T> where T : IComparable<T> {
+    private T[] items;
+    private int cantidad;
+    private const int CAPACIDAD_INICIAL = 4;
 
-    // Constructor vacío
-    public ListaOrdenada() { }
+    public ListaOrdenada() {
+        items = new T[0]; // Empezar con tamaño 0, Array.Resize lo manejará
+        cantidad = 0;
+    }
 
-    // Constructor que recibe una colección inicial de elementos
-    public ListaOrdenada(IEnumerable<T> elementos)
-    {
-        foreach (var elemento in elementos)
-        {
-            Agregar(elemento); // Agrega cada elemento manteniendo el orden
+    public ListaOrdenada(IEnumerable<T> itemsIniciales) : this() {
+        foreach (var item in itemsIniciales) {
+            Agregar(item);
         }
     }
 
-    // Método para agregar un elemento a la lista
-    public void Agregar(T elemento)
-    {
-        if (Contiene(elemento)) return; // Ignora si el elemento ya existe
+    public int Cantidad => cantidad;
 
-        int i = 0;
-        // Encuentra la posición correcta para insertar el elemento
-        while (i < Lista_Elementos.Count && Lista_Elementos[i].CompareTo(elemento) < 0)
-        {
-            i++;
-        }
-
-        Lista_Elementos.Insert(i, elemento); // Inserta el elemento en la posición correcta
-    }
-
-    // Método para verificar si un elemento está en la lista
-    public bool Contiene(T elemento)
-    {
-        return Lista_Elementos.Contains(elemento);
-    }
-
-    // Método para eliminar un elemento de la lista
-    public void Eliminar(T elemento)
-    {
-        if (Lista_Elementos.Contains(elemento))
-        {
-            Lista_Elementos.Remove(elemento); // Elimina el elemento si existe
+    public T this[int index] {
+        get {
+            if (index < 0 || index >= cantidad) {
+                throw new IndexOutOfRangeException("Índice fuera de rango.");
+            }
+            return items[index];
         }
     }
 
-    // Propiedad que devuelve la cantidad de elementos en la lista
-    public int Cantidad
-    {
-        get { return Lista_Elementos.Count; }
-    }
+    // Método privado para buscar el índice usando búsqueda binaria.
+    // Devuelve el índice si se encuentra.
+    // Devuelve el complemento bitwise (~) del índice donde debería insertarse si no se encuentra.
+    private int BuscarIndice(T item) {
+        int bajo = 0;
+        int alto = cantidad - 1;
 
-    // Indexador para acceder a los elementos por posición
-    public T this[int i]
-    {
-        get { return Lista_Elementos[i]; }
-    }
+        while (bajo <= alto) {
+            int medio = bajo + (alto - bajo) / 2;
+            int comparacion = items[medio].CompareTo(item);
 
-    // Método para filtrar elementos que cumplan una condición
-    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion)
-    {
-        ListaOrdenada<T> nueva = new ListaOrdenada<T>();
-        foreach (var elemento in Lista_Elementos)
-        {
-            if (condicion(elemento)) // Verifica si el elemento cumple la condición
-            {
-                nueva.Agregar(elemento); // Agrega el elemento a la nueva lista
+            if (comparacion == 0) {
+                return medio; // Encontrado
+            }
+
+            if (comparacion < 0) {
+                bajo = medio + 1; // Buscar en la mitad derecha
+            } else {
+                alto = medio - 1; // Buscar en la mitad izquierda
             }
         }
-        return nueva;
+
+        return ~bajo; // No encontrado, devuelve dónde debería estar
+    }
+
+    // Método privado para asegurar la capacidad del array interno.
+    private void AsegurarCapacidad() {
+        if (cantidad == items.Length) {
+            int nuevaCapacidad = items.Length == 0 ? CAPACIDAD_INICIAL : items.Length * 2;
+            Array.Resize(ref items, nuevaCapacidad);
+        }
+    }
+
+    public void Agregar(T item) {
+        int indice = BuscarIndice(item);
+
+        if (indice >= 0) return; // El elemento ya existe, no agregar duplicados
+
+        int indiceInsercion = ~indice; // Calcular índice de inserción real
+
+        // Asegurar capacidad antes de insertar
+        AsegurarCapacidad();
+
+        // Desplazar elementos a la derecha para hacer espacio usando Array.Copy
+        if (indiceInsercion < cantidad) {
+            Array.Copy(items, indiceInsercion, items, indiceInsercion + 1, cantidad - indiceInsercion);
+        }
+
+        // Insertar el nuevo elemento
+        items[indiceInsercion] = item;
+        cantidad++;
+    }
+
+    public void Eliminar(T item) {
+        int indiceEliminar = BuscarIndice(item);
+
+        if (indiceEliminar >= 0) { // Solo eliminar si se encuentra el elemento
+            cantidad--;
+            // Desplazar elementos a la izquierda para llenar el espacio usando Array.Copy
+            if (indiceEliminar < cantidad) {
+                Array.Copy(items, indiceEliminar + 1, items, indiceEliminar, cantidad - indiceEliminar);
+            }
+            items[cantidad] = default(T); // Limpiar la última posición (opcional)
+        }
+    }
+
+    public bool Contiene(T item) {
+        return BuscarIndice(item) >= 0;
+    }
+
+    public ListaOrdenada<T> Filtrar(Func<T, bool> predicado) {
+        ListaOrdenada<T> resultado = new ListaOrdenada<T>();
+        // Filtrar no se beneficia directamente de la búsqueda binaria,
+        // ya que debe evaluar el predicado para cada elemento.
+        for (int i = 0; i < cantidad; i++) {
+            if (predicado(items[i])) {
+                // Usamos el Agregar optimizado del resultado.
+                resultado.Agregar(items[i]);
+            }
+        }
+        return resultado;
     }
 }
 
-// Clase Contacto que representa un contacto con nombre y teléfono
-class Contacto : IComparable<Contacto>
-{
-    public string Nombre { get; set; } // Nombre del contacto
-    public string Telefono { get; set; } // Teléfono del contacto
+class Contacto : IComparable<Contacto> {
+    public string Nombre { get; set; }
+    public string Telefono { get; set; }
 
-// Implementar acá la clase Contacto
-    // Constructor para inicializar un contacto
-    public Contacto(string nombre, string telefono)
-    {
+    public Contacto(string nombre, string telefono) {
         Nombre = nombre;
         Telefono = telefono;
     }
 
-    // Sobrescribe Equals para comparar contactos por nombre y teléfono
-    public override bool Equals(object obj)
-    {
-        if (obj is Contacto c)
-        {
-            return Nombre == c.Nombre && Telefono == c.Telefono;
-        }
-        return false;
+    public int CompareTo(Contacto otro) {
+        if (otro == null) return 1;
+        return string.Compare(this.Nombre, otro.Nombre, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
     }
 
-    // Sobrescribe GetHashCode para garantizar un hash único basado en nombre y teléfono
-    public override int GetHashCode()
-    {
-        return Nombre.GetHashCode() + Telefono.GetHashCode();
+    public override bool Equals(object obj) {
+      return obj is Contacto otro && CompareTo(otro) == 0;
     }
 
-    // Implementa CompareTo para ordenar contactos alfabéticamente por nombre
-    public int CompareTo(Contacto otro)
-    {
-        return Nombre.CompareTo(otro.Nombre);
+    public override int GetHashCode() {
+        return Nombre.GetHashCode();
+    }
+
+    public override string ToString() {
+        return $"{Nombre} ({Telefono})";
     }
 }
 
+#region 
 /// --------------------------------------------------------///
 ///   Desde aca para abajo no se puede modificar el código  ///
 /// --------------------------------------------------------///
@@ -243,3 +269,4 @@ Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento i
 Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
 Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
 Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
+#endregion

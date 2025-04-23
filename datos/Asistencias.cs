@@ -23,6 +23,10 @@ public class Asistencia {
 }
 
 public static class Asistencias {
+    static Dictionary<string, string> CambiosTelefonos = new() {
+        { "3815825319", "3812130484" }
+    };
+
     static bool ContieneEmoji(string texto){
         bool IsEmoji(Rune rune){
         int value = rune.Value;
@@ -39,6 +43,9 @@ public static class Asistencias {
         return false;
     }
 
+    public static string Normalizar(string telefono) =>
+        CambiosTelefonos.TryGetValue(telefono, out var nuevo) ? nuevo : telefono;
+    
     public static List<Asistencia> CargarAsistencias(string origen) {
         var camino = $"/Users/adibattista/Documents/GitHub/tup-25-p3/datos/{origen}";
         if (!File.Exists(camino)) {
@@ -72,6 +79,9 @@ public static class Asistencias {
 
                 if (telefono == "unknown")
                     continue;
+                
+                telefono = Normalizar(telefono);
+
 
                 if (ContieneEmoji(mensaje)) {
                     if (!estudiantes.ContainsKey(telefono)) {

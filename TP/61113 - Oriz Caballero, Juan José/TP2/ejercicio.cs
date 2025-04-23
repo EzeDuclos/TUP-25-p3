@@ -1,295 +1,193 @@
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Trabajo_PRACTICO_2(BANCO)
+class ListaOrdenada<T> where T : IComparable<T>
 {
-    abstract class Cuenta
+    private List<T> elementos = new List<T>();
+
+    public ListaOrdenada() { }
+
+    public ListaOrdenada(IEnumerable<T> items)
     {
-        public string Numero { get; private set; }        // Número de cuenta (único)
-        public double Saldo { get; protected set; }        // Dinero en la cuenta
-        public double Puntos { get; protected set; }       // Puntos acumulados
-        public Cliente Titular { get; private set; }       // Dueño de la cuenta
-        public List<Operacion> Historial { get; } = new(); // Lista de operaciones de esta cuenta
-
-
-        public Cuenta(string numero, double saldo)
+        foreach (var item in items)
         {
-            Numero = numero;
-            Saldo = saldo;
-            Puntos = 0;
-        }
-
-        public void AsignarTitular(Cliente c) => Titular = c;
-        public virtual void Depositar(double monto) => Saldo += monto;
-        public virtual bool Extraer(double monto)
-        {
-            if (Saldo >= monto)
-            {
-                Saldo -= monto;
-                return true;
-            }
-            return false;
-        }
-        public abstract void Pagar(double monto);
-        public void AgregarOperacion(Operacion op) => Historial.Add(op);
-    }
-
-    class CuentaOro : Cuenta
-    {
-        public CuentaOro(string numero, double saldo) : base(numero, saldo) { }
-
-        public override void Pagar(double monto)
-        {
-            if (Extraer(monto))
-            {
-                if (monto > 1000) Puntos += monto * 0.05;
-                else Puntos += monto * 0.03;
-            }
-            else throw new InvalidOperationException("Fondos insuficientes.");
+            Agregar(item);
         }
     }
 
-    class CuentaPlata : Cuenta
+    public void Agregar(T elemento)
     {
-        public CuentaPlata(string numero, double saldo) : base(numero, saldo) { }
+        if (Contiene(elemento)) return;
 
-        public override void Pagar(double monto)
-        {
-            if (Extraer(monto)) Puntos += monto * 0.02;
-            else throw new InvalidOperationException("Fondos insuficientes.");
-        }
+        int index = elementos.BinarySearch(elemento);
+        if (index < 0) index = ~index;
+        elementos.Insert(index, elemento);
     }
 
-    class CuentaBronce : Cuenta
+    public void Eliminar(T elemento)
     {
-        public CuentaBronce(string numero, double saldo) : base(numero, saldo) { }
-
-        public override void Pagar(double monto)
-        {
-            if (Extraer(monto)) Puntos += monto * 0.01;
-            else throw new InvalidOperationException("Fondos insuficientes.");
-        }
+        elementos.Remove(elemento);
     }
 
-    class Cliente
+    public bool Contiene(T elemento)
     {
-        public string Nombre { get; }
-        public List<Cuenta> Cuentas { get; } = new();
-
-        public Cliente(string nombre) => Nombre = nombre;
-
-        public void Agregar(Cuenta cuenta)
-        {
-            cuenta.AsignarTitular(this);
-            Cuentas.Add(cuenta);
-        }
-
-        public double SaldoTotal() => Cuentas.Sum(c => c.Saldo);
-        public double PuntosTotal() => Cuentas.Sum(c => c.Puntos);
+        return elementos.Contains(elemento);
     }
 
-/// EJEMPLO DE USO ///
+    public int Cantidad => elementos.Count;
 
-// Definiciones 
+    public T this[int indice] => elementos[indice];
 
-//Se deben definir tres tipos de cuentas:
-
-   // Oro: Acumula un 5% de Puntos sobre los pagos realizados para montos mayores a 1000 y un 3% para montos menores.
-   //Plata: Acumula un 2% de Puntos sobre los pagos realizados.
-   //Bronce: Acumula un 1% de Puntos sobre los pagos realizados.
-   //CBU: 5 DIGITOS.
-   //COLOCAR BOOLEANOS
- abstract class Operacion
+    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion)
     {
-        public double Monto { get; protected set; }
-        public abstract void Ejecutar(Banco banco);
-        public abstract string Detalle();
+        return new ListaOrdenada<T>(elementos.Where(condicion));
+    }
+}
+
+class Contacto : IComparable<Contacto>
+{
+    public string Nombre { get; set; }
+    public string Telefono { get; set; }
+
+    public Contacto(string nombre, string telefono)
+    {
+        Nombre = nombre;
+        Telefono = telefono;
     }
 
-    class Deposito : Operacion
+    public int CompareTo(Contacto otro)
     {
-        string CuentaDestino;
-        public Deposito(string destino, double monto)
-        {
-            CuentaDestino = destino;
-            Monto = monto;
-        }
-
-        public override void Ejecutar(Banco banco)
-        {
-            var cuenta = banco.BuscarCuenta(CuentaDestino);
-            cuenta.Depositar(Monto);
-            cuenta.AgregarOperacion(this);
-            banco.AgregarOperacion(this);
-        }
-
-        public override string Detalle() => $"Deposito $ {Monto:0.00} a [{CuentaDestino}/{Banco.NombreCliente(CuentaDestino)}]";
+        return this.Nombre.CompareTo(otro.Nombre);
     }
 
-    class Retiro : Operacion
+    public override bool Equals(object obj)
     {
-        string CuentaOrigen;
-        public Retiro(string origen, double monto)
+        if (obj is Contacto c)
         {
-            CuentaOrigen = origen;
-            Monto = monto;
+            return this.Nombre == c.Nombre && this.Telefono == c.Telefono;
         }
-
-        public override void Ejecutar(Banco banco)
-        {
-            var cuenta = banco.BuscarCuenta(CuentaOrigen);
-            if (!cuenta.Extraer(Monto)) throw new InvalidOperationException("Fondos insuficientes.");
-            cuenta.AgregarOperacion(this);
-            banco.AgregarOperacion(this);
-        }
-
-        public override string Detalle() => $"Retiro $ {Monto:0.00} de [{CuentaOrigen}/{Banco.NombreCliente(CuentaOrigen)}]";
+        return false;
     }
 
-    class Pago : Operacion
+    public override int GetHashCode()
     {
-        string CuentaOrigen;
-        public Pago(string origen, double monto)
-        {
-            CuentaOrigen = origen;
-            Monto = monto;
-        }
-
-        public override void Ejecutar(Banco banco)
-        {
-            var cuenta = banco.BuscarCuenta(CuentaOrigen);
-            cuenta.Pagar(Monto);
-            cuenta.AgregarOperacion(this);
-            banco.AgregarOperacion(this);
-        }
-
-        public override string Detalle() => $"Pago $ {Monto:0.00} con [{CuentaOrigen}/{Banco.NombreCliente(CuentaOrigen)}]";
+        return HashCode.Combine(Nombre, Telefono);
     }
+}
 
-    class Transferencia : Operacion
-    {
-        string CuentaOrigen, CuentaDestino;
-        public Transferencia(string origen, string destino, double monto)
-        {
-            CuentaOrigen = origen;
-            CuentaDestino = destino;
-            Monto = monto;
-        }
-
-        public override void Ejecutar(Banco banco)
-        {
-            var origen = banco.BuscarCuenta(CuentaOrigen);
-            var destino = banco.BuscarCuentaGlobal(CuentaDestino);
-            if (!origen.Extraer(Monto)) throw new InvalidOperationException("Fondos insuficientes.");
-            destino.Depositar(Monto);
-            origen.AgregarOperacion(this);
-            destino.AgregarOperacion(this);
-            banco.AgregarOperacion(this);
-        }
-
-        public override string Detalle() => $"Transferencia $ {Monto:0.00} de [{CuentaOrigen}/{Banco.NombreCliente(CuentaOrigen)}] a [{CuentaDestino}/{Banco.NombreCliente(CuentaDestino)}]";
-    }
- class Banco
-    {
-        public string nombre;
-        public static Dictionary<string, Cuenta> GlobalCuentas = new();
-        public List<Cliente> clientes = new();
-        public List<Operacion> historial = new();
-
-        public Banco(string nombre) => this.nombre = nombre;
-
-        public void Agregar(Cliente cliente)
-        {
-            clientes.Add(cliente);
-            foreach (var c in cliente.Cuentas) GlobalCuentas[c.Numero] = c;
-        }
-
-        public void Registrar(Operacion op) => op.Ejecutar(this);
-
-        public Cuenta BuscarCuenta(string numero)
-        {
-            if (GlobalCuentas.TryGetValue(numero, out var cuenta))
-            {
-                if (!clientes.Any(c => c.Cuentas.Contains(cuenta))) throw new InvalidOperationException("La cuenta no pertenece a este banco.");
-                return cuenta;
-            }
-            throw new InvalidOperationException("Cuenta no encontrada.");
-        }
-
-        public Cuenta BuscarCuentaGlobal(string numero)
-        {
-            if (GlobalCuentas.TryGetValue(numero, out var cuenta)) return cuenta;
-            throw new InvalidOperationException("Cuenta no encontrada.");
-        }
-
-        public void AgregarOperacion(Operacion op) => historial.Add(op);
-
-        public static string NombreCliente(string numero) => GlobalCuentas.TryGetValue(numero, out var cuenta) ? cuenta.Titular.Nombre : "Desconocido";
-
-        public void Informe()
-        {
-            const int width = 80;
-            string border = new string('=', width);
-            Console.WriteLine(border);
-            Console.WriteLine($"\nBanco: {nombre} | Clientes: {clientes.Count}\n");
-
-            foreach (var cliente in clientes)
-            {
-                Console.WriteLine($"  Cliente: {cliente.Nombre} | Saldo Total: $ {cliente.SaldoTotal():0.00} | Puntos Total: $ {cliente.PuntosTotal():0.00}\n");
-
-                foreach (var cuenta in cliente.Cuentas)
-                {
-                    Console.WriteLine($"    Cuenta: {cuenta.Numero} | Saldo: $ {cuenta.Saldo:0.00} | Puntos: $ {cuenta.Puntos:0.00}");
-                    foreach (var op in cuenta.Historial)
-                    {
-                        Console.WriteLine($"     -  {op.Detalle()}");
-                    }
-                    Console.WriteLine();
-                }
-            }
-            Console.WriteLine(border);
-        }
-    }
-
-    
 class Programa
+{
+    public static void Main()
     {
-        static void Main()
+        void Assert<T>(T real, T esperado, string mensaje)
         {
-            var raul = new Cliente("Raul Perez");
-            raul.Agregar(new CuentaOro("10001", 1000));
-            raul.Agregar(new CuentaPlata("10002", 2000));
-
-            var sara = new Cliente("Sara Lopez");
-            sara.Agregar(new CuentaPlata("10003", 3000));
-            sara.Agregar(new CuentaPlata("10004", 4000));
-
-            var luis = new Cliente("Luis Gomez");
-            luis.Agregar(new CuentaBronce("10005", 5000));
-
-            var nac = new Banco("Banco Nac");
-            nac.Agregar(raul);
-            nac.Agregar(sara);
-
-            var tup = new Banco("Banco TUP");
-            tup.Agregar(luis);
-
-
-            nac.Registrar(new Deposito("10001", 100));
-            nac.Registrar(new Retiro("10002", 200));
-            nac.Registrar(new Transferencia("10001", "10002", 300));
-            nac.Registrar(new Transferencia("10003", "10004", 500));
-            nac.Registrar(new Pago("10002", 400));
-
-            tup.Registrar(new Deposito("10005", 100));
-            tup.Registrar(new Retiro("10005", 200));
-            tup.Registrar(new Transferencia("10005", "10002", 300));
-            tup.Registrar(new Pago("10005", 400));
-
-            nac.Informe();
-            tup.Informe();
+            if (!Equals(esperado, real))
+                throw new Exception($"[ASSERT FALLÓ] {mensaje} → Esperado: {esperado}, Real: {real}");
+            Console.WriteLine($"[OK] {mensaje}");
         }
+
+        var lista = new ListaOrdenada<int>();
+        lista.Agregar(5);
+        lista.Agregar(1);
+        lista.Agregar(3);
+
+        Assert(lista[0], 1, "Primer elemento");
+        Assert(lista[1], 3, "Segundo elemento");
+        Assert(lista[2], 5, "Tercer elemento");
+        Assert(lista.Cantidad, 3, "Cantidad de elementos");
+
+        Assert(lista.Filtrar(x => x > 2).Cantidad, 2, "Cantidad de elementos filtrados");
+        Assert(lista.Filtrar(x => x > 2)[0], 3, "Primer elemento filtrado");
+        Assert(lista.Filtrar(x => x > 2)[1], 5, "Segundo elemento filtrado");
+
+        Assert(lista.Contiene(1), true,  "Contiene");
+        Assert(lista.Contiene(2), false, "No contiene");
+
+        lista.Agregar(3);
+        Assert(lista.Cantidad, 3, "Cantidad de elementos tras agregar un elemento repetido");
+
+        lista.Agregar(2);
+        Assert(lista.Cantidad, 4, "Cantidad de elementos tras agregar 2");
+        Assert(lista[0], 1, "Primer elemento tras agregar 2");
+        Assert(lista[1], 2, "Segundo elemento tras agregar 2");
+        Assert(lista[2], 3, "Tercer elemento tras agregar 2");
+
+        lista.Eliminar(2);
+        Assert(lista.Cantidad, 3, "Cantidad de elementos tras eliminar elemento existente");
+        Assert(lista[0], 1, "Primer elemento tras eliminar 2");
+        Assert(lista[1], 3, "Segundo elemento tras eliminar 2");
+        lista.Eliminar(100);
+        Assert(lista.Cantidad, 3, "Cantidad de elementos tras eliminar elemento inexistente");
+        var nombres = new ListaOrdenada<string>(new string[] { "Juan", "Pedro", "Ana" });
+        Assert(nombres.Cantidad, 3, "Cantidad de nombres");
+
+        Assert(nombres[0], "Ana", "Primer nombre");
+        Assert(nombres[1], "Juan", "Segundo nombre");
+        Assert(nombres[2], "Pedro", "Tercer nombre");
+
+        Assert(nombres.Filtrar(x => x.StartsWith("A")).Cantidad, 1, "Cantidad de nombres que empiezan con A");
+        Assert(nombres.Filtrar(x => x.Length > 3).Cantidad, 2, "Cantidad de nombres con más de 3 letras");
+
+        Assert(nombres.Contiene("Ana"), true, "Contiene Ana");
+        Assert(nombres.Contiene("Domingo"), false, "No contiene Domingo");
+
+        nombres.Agregar("Pedro");
+        Assert(nombres.Cantidad, 3, "Cantidad de nombres tras agregar Pedro nuevamente");
+
+        nombres.Agregar("Carlos");
+        Assert(nombres.Cantidad, 4, "Cantidad de nombres tras agregar Carlos");
+
+        Assert(nombres[0], "Ana", "Primer nombre tras agregar Carlos");
+        Assert(nombres[1], "Carlos", "Segundo nombre tras agregar Carlos");
+
+        nombres.Eliminar("Carlos");
+        Assert(nombres.Cantidad, 3, "Cantidad de nombres tras agregar Carlos");
+
+        Assert(nombres[0], "Ana", "Primer nombre tras eliminar Carlos");
+        Assert(nombres[1], "Juan", "Segundo nombre tras eliminar Carlos");
+
+        nombres.Eliminar("Domingo");
+        Assert(nombres.Cantidad, 3, "Cantidad de nombres tras eliminar un elemento inexistente");
+
+        Assert(nombres[0], "Ana", "Primer nombre tras eliminar Domingo");
+        Assert(nombres[1], "Juan", "Segundo nombre tras eliminar Domingo");
+        var juan  = new Contacto("Juan",  "123456");
+        var pedro = new Contacto("Pedro", "654321");
+        var ana   = new Contacto("Ana",   "789012");
+        var otro  = new Contacto("Otro",  "345678");
+
+        var contactos = new ListaOrdenada<Contacto>(new Contacto[] { juan, pedro, ana });
+        Assert(contactos.Cantidad, 3, "Cantidad de contactos");
+        Assert(contactos[0].Nombre, "Ana", "Primer contacto");
+        Assert(contactos[1].Nombre, "Juan", "Segundo contacto");
+        Assert(contactos[2].Nombre, "Pedro", "Tercer contacto");
+
+        Assert(contactos.Filtrar(x => x.Nombre.StartsWith("A")).Cantidad, 1, "Cantidad de contactos que empiezan con A");
+        Assert(contactos.Filtrar(x => x.Nombre.Contains("a")).Cantidad, 2, "Cantidad de contactos que contienen a");
+
+        Assert(contactos.Contiene(juan), true, "Contiene Juan");
+        Assert(contactos.Contiene(otro), false, "No contiene Otro");
+
+        contactos.Agregar(otro);
+        Assert(contactos.Cantidad, 4, "Cantidad de contactos tras agregar Otro");
+        Assert(contactos.Contiene(otro), true, "Contiene Otro");
+
+        Assert(contactos[0].Nombre, "Ana", "Primer contacto tras agregar Otro");
+        Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras agregar Otro");
+        Assert(contactos[2].Nombre, "Otro", "Tercer contacto tras agregar Otro");
+        Assert(contactos[3].Nombre, "Pedro", "Cuarto contacto tras agregar Otro");
+
+        contactos.Eliminar(otro);
+        Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar Otro");
+        Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
+        Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
+        Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
+
+        contactos.Eliminar(otro);
+        Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento inexistente");
+        Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
+        Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
+        Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
     }
 }

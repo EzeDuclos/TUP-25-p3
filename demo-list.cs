@@ -1,120 +1,114 @@
 using System;
 using System.Collections.Generic;
+using System.Linq; // Necesario para Where en Filtrar (alternativa)
 
 
- // Implementar acá la clase ListaOrdenada
-// Clase genérica ListaOrdenada que mantiene los elementos ordenados
-class ListaOrdenada<T> where T : IComparable<T>
-{
-    // Lista interna para almacenar los elementos
-    List<T> Lista_Elementos = new List<T>();
+class ListaOrdenada<T> where T : IComparable<T> {
+    private List<T> lista = new List<T>();
 
-    // Constructor vacío
+    // Constructor por defecto
     public ListaOrdenada() { }
 
-    // Constructor que recibe una colección inicial de elementos
-    public ListaOrdenada(IEnumerable<T> elementos)
-    {
-        foreach (var elemento in elementos)
-        {
-            Agregar(elemento); // Agrega cada elemento manteniendo el orden
+    // Constructor que inicializa con una colección de elementos
+    public ListaOrdenada(IEnumerable<T> elementos) {
+        foreach (var elemento in elementos) {
+            Agregar(elemento);
         }
     }
 
-    // Método para agregar un elemento a la lista
-    public void Agregar(T elemento)
-    {
-        if (Contiene(elemento)) return; // Ignora si el elemento ya existe
+    // Propiedad para obtener la cantidad de elementos
+    public int Cantidad => lista.Count;
 
-        int i = 0;
-        // Encuentra la posición correcta para insertar el elemento
-        while (i < Lista_Elementos.Count && Lista_Elementos[i].CompareTo(elemento) < 0)
-        {
-            i++;
-        }
-
-        Lista_Elementos.Insert(i, elemento); // Inserta el elemento en la posición correcta
-    }
-
-    // Método para verificar si un elemento está en la lista
-    public bool Contiene(T elemento)
-    {
-        return Lista_Elementos.Contains(elemento);
-    }
-
-    // Método para eliminar un elemento de la lista
-    public void Eliminar(T elemento)
-    {
-        if (Lista_Elementos.Contains(elemento))
-        {
-            Lista_Elementos.Remove(elemento); // Elimina el elemento si existe
+    // Indexador para acceder a los elementos por índice
+    public T this[int index] {
+        get {
+            if (index < 0 || index >= lista.Count) {
+                throw new IndexOutOfRangeException("El índice está fuera del rango de la lista.");
+            }
+            return lista[index];
         }
     }
 
-    // Propiedad que devuelve la cantidad de elementos en la lista
-    public int Cantidad
-    {
-        get { return Lista_Elementos.Count; }
+    // Agrega un elemento manteniendo el orden y sin duplicados
+    public void Agregar(T elemento) {
+        int index = lista.BinarySearch(elemento);
+        // BinarySearch devuelve:
+        // - El índice del elemento si se encuentra.
+        // - Un número negativo cuyo complemento bit a bit (~) es el índice
+        //   del primer elemento mayor que el valor buscado, o Count si todos
+        //   los elementos son menores.
+        if (index < 0) {
+            // El elemento no existe, insertarlo en la posición correcta
+            lista.Insert(~index, elemento);
+        }
+        // Si index >= 0, el elemento ya existe, no hacemos nada.
     }
 
-    // Indexador para acceder a los elementos por posición
-    public T this[int i]
-    {
-        get { return Lista_Elementos[i]; }
+    // Elimina un elemento de la lista
+    public void Eliminar(T elemento) {
+        int index = lista.BinarySearch(elemento);
+        if (index >= 0) {
+            // El elemento fue encontrado, eliminarlo
+            lista.RemoveAt(index);
+        }
+        // Si index < 0, el elemento no existe, no hacemos nada.
     }
 
-    // Método para filtrar elementos que cumplan una condición
-    public ListaOrdenada<T> Filtrar(Func<T, bool> condicion)
-    {
-        ListaOrdenada<T> nueva = new ListaOrdenada<T>();
-        foreach (var elemento in Lista_Elementos)
-        {
-            if (condicion(elemento)) // Verifica si el elemento cumple la condición
-            {
-                nueva.Agregar(elemento); // Agrega el elemento a la nueva lista
+    // Verifica si un elemento está contenido en la lista
+    public bool Contiene(T elemento) {
+        int index = lista.BinarySearch(elemento);
+        return index >= 0;
+    }
+
+    // Devuelve una nueva ListaOrdenada con los elementos que cumplen el predicado
+    public ListaOrdenada<T> Filtrar(Func<T, bool> predicado) {
+        var resultado = new ListaOrdenada<T>();
+        // Iteramos sobre la lista interna ordenada
+        foreach (var elemento in lista) {
+            if (predicado(elemento)) {
+                // Como la lista original está ordenada y solo estamos filtrando,
+                // los elementos que cumplen el predicado ya estarán ordenados
+                // entre sí. Podemos agregarlos directamente a la lista interna
+                // de la nueva instancia. Esto es más eficiente que llamar a Agregar.
+                resultado.lista.Add(elemento);
             }
         }
-        return nueva;
+        return resultado;
+
+        // Alternativa usando LINQ (un poco menos eficiente porque crea una lista intermedia):
+        // var elementosFiltrados = lista.Where(predicado);
+        // return new ListaOrdenada<T>(elementosFiltrados);
     }
 }
 
-// Clase Contacto que representa un contacto con nombre y teléfono
-class Contacto : IComparable<Contacto>
-{
-    public string Nombre { get; set; } // Nombre del contacto
-    public string Telefono { get; set; } // Teléfono del contacto
+class Contacto : IComparable<Contacto> {
+    public string Nombre { get; set; }
+    public string Telefono { get; set; }
 
-// Implementar acá la clase Contacto
-    // Constructor para inicializar un contacto
-    public Contacto(string nombre, string telefono)
-    {
+    public Contacto(string nombre, string telefono) {
         Nombre = nombre;
         Telefono = telefono;
     }
 
-    // Sobrescribe Equals para comparar contactos por nombre y teléfono
-    public override bool Equals(object obj)
-    {
-        if (obj is Contacto c)
-        {
-            return Nombre == c.Nombre && Telefono == c.Telefono;
-        }
-        return false;
+    public int CompareTo(Contacto otro) {
+        if (otro == null) return 1;
+        return string.Compare(this.Nombre, otro.Nombre, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
     }
 
-    // Sobrescribe GetHashCode para garantizar un hash único basado en nombre y teléfono
-    public override int GetHashCode()
-    {
-        return Nombre.GetHashCode() + Telefono.GetHashCode();
+    public override bool Equals(object obj) {
+      return obj is Contacto otro && CompareTo(otro) == 0;
     }
 
-    // Implementa CompareTo para ordenar contactos alfabéticamente por nombre
-    public int CompareTo(Contacto otro)
-    {
-        return Nombre.CompareTo(otro.Nombre);
+    public override int GetHashCode() {
+        return HashCode.Combine(Nombre);
+    }
+
+    public override string ToString() {
+        return $"{Nombre} ({Telefono})";
     }
 }
 
+#region 
 /// --------------------------------------------------------///
 ///   Desde aca para abajo no se puede modificar el código  ///
 /// --------------------------------------------------------///
@@ -243,3 +237,4 @@ Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento i
 Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
 Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
 Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");
+#endregion
