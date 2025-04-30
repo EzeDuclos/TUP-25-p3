@@ -1,6 +1,5 @@
 using TUP;
 
-
 public class Alumno {
     readonly int MaxPracticos = 20;
 
@@ -12,6 +11,7 @@ public class Alumno {
     public int Orden { get; set; }
     public int Asistencias { get; set; } = 0;
     public int Resultado { get; set; } = 0; 
+    public int Creditos { get; set; } = 0;
 
     public List<EstadoPractico> Practicos { get; set; } = new(); // Almacena el estado de los trabajos prácticos como una lista
 
@@ -45,6 +45,10 @@ public class Alumno {
         Practicos.Clear();
         Asistencias = 0;
     }
+
+    public string TelefonoLimpio => Telefono.Replace(" ", "").Replace("-", "").Replace("(", "").Replace(")", "").Trim();
+    public string NombreLimpio => $"{Nombre} {Apellido}".Replace("-", "").Replace("*", "").Trim();
+
 
     public bool TieneTelefono => Telefono != "";
     public string NombreCompleto => $"{Apellido}, {Nombre}".Replace("-", "").Replace("*", "").Trim();

@@ -23,9 +23,14 @@ public class Asistencia {
 }
 
 public static class Asistencias {
-    static Dictionary<string, string> CambiosTelefonos = new() {
-        { "3815825319", "3812130484" }
-    };
+
+    public static string NormalizarCambioTelefono(string telefono) {
+        Dictionary<string, string> CambiosTelefonos = new() {
+            { "3815825319", "3812130484" },
+            { "3813192680", "3815627688" }
+        };
+        return CambiosTelefonos.TryGetValue(telefono, out var nuevo) ? nuevo : telefono;
+    }
 
     static bool ContieneEmoji(string texto){
         bool IsEmoji(Rune rune){
@@ -42,11 +47,8 @@ public static class Asistencias {
         }
         return false;
     }
-
-    public static string Normalizar(string telefono) =>
-        CambiosTelefonos.TryGetValue(telefono, out var nuevo) ? nuevo : telefono;
     
-    public static List<Asistencia> CargarAsistencias(string origen) {
+    public static List<Asistencia> CargarAsistenciasMd(string origen) {
         var camino = $"/Users/adibattista/Documents/GitHub/tup-25-p3/datos/{origen}";
         if (!File.Exists(camino)) {
             Console.WriteLine($"El archivo {camino} no existe.");
@@ -80,7 +82,7 @@ public static class Asistencias {
                 if (telefono == "unknown")
                     continue;
                 
-                telefono = Normalizar(telefono);
+                telefono = NormalizarCambioTelefono(telefono);
 
 
                 if (ContieneEmoji(mensaje)) {
@@ -98,11 +100,72 @@ public static class Asistencias {
         return estudiantes.Values.ToList();
     }
 
+public static List<Asistencia> CargarAsistenciasHistoria(string origen) {
+        var camino = $"/Users/adibattista/Documents/GitHub/tup-25-p3/datos/{origen}";
+
+        if (!File.Exists(camino)) {
+            Console.WriteLine($"El archivo {camino} no existe.");
+            return new List<Asistencia>();
+        }
+
+        var lineas = File.ReadAllLines(camino);
+        var estudiantes = new Dictionary<string, Asistencia>();
+        Consola.Escribir($"Leyendo asistencias de {origen} hay {lineas.Count()} Lineas a analizar", ConsoleColor.Green);
+
+        DateTime fechaActual = DateTime.MinValue;
+        string mensaje = "";
+        string telefono = "";
+
+        var patronFechaNumero = new Regex(@"^\[(\d+/\d*/\d+).*\]\s+(\d{10})\s*:(.*)$");
+        
+        foreach (var linea in lineas) {
+            if (string.IsNullOrWhiteSpace(linea)) continue;
+            if (linea.Trim()=="") continue;
+
+            var dateMatch = patronFechaNumero.Match(linea.Trim());
+            if (dateMatch.Success) {
+                string fecha = dateMatch.Groups[1].Value;
+                telefono = dateMatch.Groups[2].Value;
+                mensaje = dateMatch.Groups[3].Value;
+                fechaActual = DateTime.ParseExact(fecha, new[] { "d/M/yy", "dd/MM/yy", "d/MM/yy", "dd/M/yy" }, null, System.Globalization.DateTimeStyles.None);
+            } else {
+                mensaje = linea.Trim();
+            }
+
+            telefono = NormalizarCambioTelefono(telefono);
+
+            if (ContieneEmoji(mensaje)) {
+                if (!estudiantes.ContainsKey(telefono)) {
+                    estudiantes[telefono] = new Asistencia(telefono);
+                }
+
+                if (!estudiantes[telefono].Fechas.Any(d => d.Date == fechaActual.Date)) {
+                    estudiantes[telefono].Fechas.Add(fechaActual);
+                }
+            }
+        }
+
+        return estudiantes.Values.ToList();
+    }
+
     public static List<Asistencia> Cargar(bool listar = false) {
+        List<string> eliminarFecha(Dictionary<string, List<DateTime>> salida) {
+            var contador = new Dictionary<DateTime, int>();
+            foreach (var (telefono, fechas) in salida){
+                foreach (var fecha in fechas.Distinct()) {
+                    contador[fecha.Date] = contador.GetValueOrDefault(fecha.Date) + 1;
+                }
+            }
+            return contador.Where(c => c.Value < 30).Select(c => c.Key.ToString()).ToList();
+        }
+
         var salida = new Dictionary<string, List<DateTime>>();
 
-        foreach (var origen in Directory.GetFiles("./asistencias", "*.md")){   
-            List<Asistencia> estudiantes = CargarAsistencias(origen);
+        Consola.Escribir("=== Cargando asistencias ===", ConsoleColor.Red);
+        foreach (var origen in Directory.GetFiles("./asistencias/", "historia-*.txt")){   
+            Consola.Escribir($"Cargando asistencias de {origen}", ConsoleColor.Cyan);
+            List<Asistencia> estudiantes = CargarAsistenciasHistoria(origen);
+            Consola.Escribir($"Se cargaron {estudiantes.Count} asistencias", ConsoleColor.Cyan);
             foreach (var estudiante in estudiantes) {
                 if (!salida.ContainsKey(estudiante.Telefono)) {
                     salida[estudiante.Telefono] = new List<DateTime>();
@@ -112,6 +175,9 @@ public static class Asistencias {
         }   
 
         // Cuenta cuantas veces hay asistencias en la fecha
+
+        var eliminar = eliminarFecha(salida);
+        Consola.Escribir($"=== Eliminar >> {string.Join(";",eliminar)}", ConsoleColor.Cyan);
         List<Asistencia> asistencias = salida
             .Select(item => new Asistencia(item.Key) { Fechas = item.Value })
             .ToList();
@@ -121,16 +187,17 @@ public static class Asistencias {
             var contador = new Dictionary<DateTime, int>();
             foreach (var (telefono, fechas) in salida){
                 foreach (var fecha in fechas.Distinct()) {
+                    if (eliminar.Contains(fecha.ToString())) continue;
                     contador[fecha.Date] = contador.GetValueOrDefault(fecha.Date) + 1;
                     antes++;
                 }
             }
             // Filtra las fechas que tienen más de 30 asistencias
             Consola.Escribir("=== Fechas y cantidad de asistencias ===", ConsoleColor.Green);
+            var i = 1;
             foreach (var entrada in contador.OrderBy(c => c.Key)){
-                Consola.Escribir($"{entrada.Key:dd/MM/yyyy}: {entrada.Value} veces");
+                Consola.Escribir($"{i++,2}) {entrada.Key:dd/MM/yyyy}: {entrada.Value} veces");
             }
-            Consola.Escribir("===\n");
         
             Consola.Escribir("=== Asistencias ===", ConsoleColor.Cyan);
             Consola.Escribir($"Hay {asistencias.Count} asistencias", ConsoleColor.Cyan);

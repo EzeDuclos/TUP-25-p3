@@ -20,6 +20,12 @@ class ListaOrdenada<T>{
         elementos.Sort(comparador);
     }
 
+    public ListaOrdenada(IEnumerable<T> coleccion, IComparer<T> comparer) {
+        elementos = new List<T>(coleccion);
+        comparador = comparer;
+        elementos.Sort(comparador);
+    }
+
     public int Cantidad => elementos.Count;
 
     public T this[int indice]
@@ -36,6 +42,7 @@ class ListaOrdenada<T>{
 
     public void Agregar(T item)
     {
+        if (Contiene(item)) return; // Evitar duplicados
         int indice = 0;
         while (indice < elementos.Count && comparador.Compare(elementos[indice], item) < 0)
         {
@@ -174,6 +181,10 @@ Assert(nombres.Cantidad, 3, "Cantidad de nombres tras eliminar un elemento inexi
 Assert(nombres[0], "Ana", "Primer nombre tras eliminar Domingo");
 Assert(nombres[1], "Juan", "Segundo nombre tras eliminar Domingo");
 
+var juan = new Contacto("Juan", "123456");
+var pedro = new Contacto("Pedro", "654321");
+var ana = new Contacto("Ana", "789012");
+var otro = new Contacto("Otro", "345678");
 
 var contactos = new ListaOrdenada<Contacto>(new Contacto[] { juan, pedro, ana }, Comparer<Contacto>.Create((c1, c2) => c1.Nombre.CompareTo(c2.Nombre)));
 Assert(contactos.Cantidad, 3, "Cantidad de contactos");
@@ -206,5 +217,4 @@ contactos.Eliminar(otro);
 Assert(contactos.Cantidad, 3, "Cantidad de contactos tras eliminar un elemento inexistente");
 Assert(contactos[0].Nombre, "Ana", "Primer contacto tras eliminar Otro");
 Assert(contactos[1].Nombre, "Juan", "Segundo contacto tras eliminar Otro");
-
 Assert(contactos[2].Nombre, "Pedro", "Tercer contacto tras eliminar Otro");

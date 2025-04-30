@@ -48,6 +48,15 @@ public class ListaOrdenada<T> where T : IComparable<T>
         elementos = new List<T>();
     }
 
+    public ListaOrdenada(IEnumerable<T> coleccion)
+    {
+        elementos = new List<T>();
+        foreach (var elemento in coleccion)
+        {
+            Agregar(elemento);
+        }
+    }
+
     public void Agregar(T elemento)
     {
         if (Contiene(elemento)) return;

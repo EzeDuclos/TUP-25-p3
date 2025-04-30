@@ -1,20 +1,16 @@
 #!/bin/bash
 
-# Script to recursively remove obj, bin directories and enunciado.md files from TP directory
-# Created by GitHub Copilot
+# Script para eliminar recursivamente los directorios obj y bin del directorio TP
+# Actualizado para un propósito más específico
 
-echo "Starting cleanup of TP directory..."
+echo "Iniciando limpieza de directorios obj y bin en la carpeta TP..."
 
-# Find and remove all bin and obj directories
-find ../TP -type d -name "obj" -o -name "bin" | while read dir; do
-  echo "Removing directory: $dir"
+# Buscar y eliminar todos los directorios bin y obj de forma más eficiente
+find /Users/adibattista/Documents/GitHub/tup-25-p3/TP -type d \( -name "obj" -o -name "bin" \) | while read dir; do
+  echo "Eliminando directorio: $dir"
   rm -rf "$dir"
 done
 
-# Find and remove all enunciado.md files
-find ../TP -type f -name "enunciado.md" | while read file; do
-  echo "Removing file: $file"
-  rm -f "$file"
-done
-
-echo "Cleanup complete!"
+# Contar cuántos directorios se eliminaron
+total_dirs=$(find ../TP -type d \( -name "obj" -o -name "bin" \) | wc -l)
+echo "Limpieza completada! Se verificaron $total_dirs directorios obj/bin."

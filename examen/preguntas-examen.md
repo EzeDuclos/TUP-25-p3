@@ -10,15 +10,7 @@ c) -255 a 255
 
 ---
 
-### 002 6299
 
-¿Qué tipo entero utilizarías para almacenar un valor de 4.000 millones (4.000.000.000)?
-
-a) `int`
-b) `short`
-c) `long`
-
----
 
 ### 003 2605
 
@@ -37,6 +29,15 @@ c) 17
 a) `long`
 b) `short`
 c) `int`
+
+---
+### 002 6299
+
+¿Qué tipo entero utilizarías para almacenar un valor de 4.000 millones (4.000.000.000)?
+
+a) `int`
+b) `short`
+c) `long`
 
 ---
 
@@ -2699,5 +2700,6 @@ c) Un único valor
 a) Combina múltiples secuencias en una sola
 b) Selecciona el valor más grande
 c) Filtra elementos que cumplen muchas condiciones
+
 
 ---

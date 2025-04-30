@@ -4,16 +4,23 @@ using System.Collections.Generic;
 class ListaOrdenada<T> where T : IComparable<T>
 {
     private List<T> elementos = new List<T>();
+    private IComparer<T> comparador;
 
     public int Cantidad => elementos.Count;
 
     public T this[int indice] => elementos[indice];
 
-    public ListaOrdenada() { }
-    public ListaOrdenada(IEnumerable<T> coleccion)
-    {
-        foreach (var item in coleccion)
-            Agregar(item);
+    public ListaOrdenada() : this(Comparer<T>.Default) { }
+
+    public ListaOrdenada(IEnumerable<T> coleccion) : this(coleccion, Comparer<T>.Default) { }
+
+    public ListaOrdenada(IEnumerable<T> coleccion, IComparer<T> comparador) {
+        this.comparador = comparador;
+        foreach (var item in coleccion) Agregar(item);
+    }
+
+    public ListaOrdenada(IComparer<T> comparador) {
+        this.comparador = comparador;
     }
 
     public bool Contiene(T elemento) => elementos.Contains(elemento);
@@ -22,7 +29,7 @@ class ListaOrdenada<T> where T : IComparable<T>
     {
         if (Contiene(elemento)) return; // Ignora duplicados
 
-        int posicion = elementos.BinarySearch(elemento);
+        int posicion = elementos.BinarySearch(elemento, comparador);
         if (posicion < 0) posicion = ~posicion; 
         elementos.Insert(posicion, elemento);
     }
@@ -144,6 +151,10 @@ Assert(nombres.Cantidad, 3, "Cantidad de nombres tras eliminar un elemento inexi
 Assert(nombres[0], "Ana", "Primer nombre tras eliminar Domingo");
 Assert(nombres[1], "Juan", "Segundo nombre tras eliminar Domingo");
 
+var juan = new Contacto("Juan", "123456");
+var pedro = new Contacto("Pedro", "654321");
+var ana = new Contacto("Ana", "789012");
+var otro = new Contacto("Otro", "345678");
 
 var contactos = new ListaOrdenada<Contacto>(new Contacto[] { juan, pedro, ana }, Comparer<Contacto>.Create((c1, c2) => c1.Nombre.CompareTo(c2.Nombre)));
 Assert(contactos.Cantidad, 3, "Cantidad de contactos");

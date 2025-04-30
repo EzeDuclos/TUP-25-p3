@@ -6,6 +6,14 @@ public class ListaOrdenada<T> : IEnumerable<T> where T : IComparable<T>
 {
     private List<T> elementos = new List<T>();
 
+    public ListaOrdenada() { }
+
+    public ListaOrdenada(IEnumerable<T> coleccion) {
+        foreach (var elemento in coleccion) {
+            Agregar(elemento);
+        }
+    }
+
     public bool Contiene(T elemento)
     {
         return elementos.Contains(elemento);
