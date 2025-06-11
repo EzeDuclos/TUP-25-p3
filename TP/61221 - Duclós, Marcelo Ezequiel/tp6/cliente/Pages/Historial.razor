@@ -1,0 +1,81 @@
+@page "/historial"
+@using cliente.Models
+@inject ApiService ApiService
+
+<h1>Historial de Compras</h1>
+
+<div class="mb-3">
+    <label>Email del cliente:</label>
+    <InputText class="form-control" @bind-Value="emailCliente" />
+    <button class="btn btn-primary mt-2" @onclick="BuscarHistorial">Buscar</button>
+</div>
+
+@if (cargando)
+{
+    <div class="alert alert-info">Buscando historial...</div>
+}
+else if (ventas != null && ventas.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Productos</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var venta in ventas)
+            {
+                <tr>
+                    <td>@venta.Fecha.ToString("g")</td>
+                    <td>
+                        <ul>
+                            @foreach (var det in venta.Detalles)
+                            {
+                                <li>@det.Producto.Nombre x @det.Cantidad</li>
+                            }
+                        </ul>
+                    </td>
+                    <td>
+                        $@venta.Detalles.Sum(d => d.Producto.Precio * d.Cantidad)
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (ventas != null)
+{
+    <div class="alert alert-warning">No hay compras para este cliente.</div>
+}
+
+@if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+
+@code {
+    private string emailCliente;
+    private List<VentaResponse> ventas;
+    private bool cargando = false;
+    private string error;
+
+    private async Task BuscarHistorial()
+    {
+        error = null;
+        ventas = null;
+        cargando = true;
+        try
+        {
+            ventas = await ApiService.ObtenerHistorialPorEmailAsync(emailCliente);
+        }
+        catch (Exception ex)
+        {
+            error = "Error al buscar historial: " + ex.Message;
+        }
+        cargando = false;
+    }
+
+    
+}

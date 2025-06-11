@@ -1,33 +1,32 @@
 using cliente.Models;
 
-public class CarritoService
+namespace cliente.Services
 {
-    private List<CarritoItem> _items = new();
-
-    public IReadOnlyList<CarritoItem> Items => _items;
-
-    public void AgregarAlCarrito(Producto producto, int cantidad)
+    public class CarritoService
     {
-        var item = _items.FirstOrDefault(i => i.Producto.Id == producto.Id);
-        if (item != null)
+        private List<CarritoItem> _items = new();
+
+        public IReadOnlyList<CarritoItem> Items => _items;
+
+        public void AgregarAlCarrito(Producto producto, int cantidad)
         {
-            item.Cantidad += cantidad;
+            var item = _items.FirstOrDefault(i => i.Producto.Id == producto.Id);
+            if (item != null)
+                item.Cantidad += cantidad;
+            else
+                _items.Add(new CarritoItem { Producto = producto, Cantidad = cantidad });
         }
-        else
+
+        public void QuitarDelCarrito(int productoId)
         {
-            _items.Add(new CarritoItem { Producto = producto, Cantidad = cantidad });
+            var item = _items.FirstOrDefault(i => i.Producto.Id == productoId);
+            if (item != null)
+                _items.Remove(item);
         }
-    }
 
-    public void QuitarDelCarrito(int productoId)
-    {
-        var item = _items.FirstOrDefault(i => i.Producto.Id == productoId);
-        if (item != null)
-            _items.Remove(item);
-    }
-
-    public void VaciarCarrito()
-    {
-        _items.Clear();
+        public void VaciarCarrito()
+        {
+            _items.Clear();
+        }
     }
 }
