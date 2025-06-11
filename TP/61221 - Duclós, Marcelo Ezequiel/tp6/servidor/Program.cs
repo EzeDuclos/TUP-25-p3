@@ -80,4 +80,56 @@ app.MapDelete("/api/productos/{id:int}", async (int id, TiendaContext db) =>
     return Results.NoContent();
 });
 
+// Endpoint POST para ventas con validación de stock
+
+app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaContext db) =>
+{
+    // Validar stock
+    foreach (var item in ventaRequest.Detalles)
+    {
+        var producto = await db.Productos.FindAsync(item.ProductoId);
+        if (producto == null)
+            return Results.BadRequest($"Producto con ID {item.ProductoId} no existe.");
+        if (producto.Stock < item.Cantidad)
+            return Results.BadRequest($"Stock insuficiente para el producto {producto.Nombre}.");
+    }
+
+    // Crear la venta
+    var venta = new Venta
+    {
+        Fecha = DateTime.Now,
+        NombreCliente = ventaRequest.NombreCliente,
+        ApellidoCliente = ventaRequest.ApellidoCliente,
+        EmailCliente = ventaRequest.EmailCliente,
+        Total = 0,
+        Detalles = new List<DetalleVenta>()
+    };
+
+    decimal total = 0;
+
+    foreach (var item in ventaRequest.Detalles)
+    {
+        var producto = await db.Productos.FindAsync(item.ProductoId);
+        if (producto == null) continue;
+
+        producto.Stock -= item.Cantidad;
+
+        var detalle = new DetalleVenta
+        {
+            ProductoId = producto.Id,
+            Cantidad = item.Cantidad,
+            PrecioUnitario = producto.Precio
+        };
+        total += producto.Precio * item.Cantidad;
+        venta.Detalles.Add(detalle);
+    }
+
+    venta.Total = total;
+    db.Ventas.Add(venta);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/ventas/{venta.Id}", venta);
+});
+
+
 app.Run();
