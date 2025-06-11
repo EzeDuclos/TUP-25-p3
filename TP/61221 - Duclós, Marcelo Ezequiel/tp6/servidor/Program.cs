@@ -80,6 +80,48 @@ app.MapDelete("/api/productos/{id:int}", async (int id, TiendaContext db) =>
     return Results.NoContent();
 });
 
+// Endpoints CRUD para clientes
+
+app.MapGet("/api/clientes", async (TiendaContext db) =>
+    await db.Clientes.ToListAsync()
+);
+
+app.MapGet("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
+    await db.Clientes.FindAsync(id) is Cliente cliente
+        ? Results.Ok(cliente)
+        : Results.NotFound()
+);
+
+app.MapPost("/api/clientes", async (Cliente cliente, TiendaContext db) =>
+{
+    db.Clientes.Add(cliente);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/clientes/{cliente.Id}", cliente);
+});
+
+app.MapPut("/api/clientes/{id:int}", async (int id, Cliente input, TiendaContext db) =>
+{
+    var cliente = await db.Clientes.FindAsync(id);
+    if (cliente is null) return Results.NotFound();
+
+    cliente.Nombre = input.Nombre;
+    cliente.Apellido = input.Apellido;
+    cliente.Email = input.Email;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(cliente);
+});
+
+app.MapDelete("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
+{
+    var cliente = await db.Clientes.FindAsync(id);
+    if (cliente is null) return Results.NotFound();
+
+    db.Clientes.Remove(cliente);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
+
 // Endpoint POST para ventas con validación de stock
 
 app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaContext db) =>
@@ -131,5 +173,17 @@ app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaCont
     return Results.Created($"/api/ventas/{venta.Id}", venta);
 });
 
+// Endpoint para consultar historial de compras de un cliente
+
+app.MapGet("/api/ventas/cliente/{clienteId:int}", async (int clienteId, TiendaContext db) =>
+{
+    var ventas = await db.Ventas
+        .Where(v => v.EmailCliente == db.Clientes.Where(c => c.Id == clienteId).Select(c => c.Email).FirstOrDefault())
+        .Include(v => v.Detalles)
+        .ThenInclude(d => d.Producto)
+        .ToListAsync();
+
+    return Results.Ok(ventas);
+});
 
 app.Run();
