@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using cliente.Models
 @inject ApiService ApiService
+@inject CarritoService CarritoService
 
 <PageTitle>Productos</PageTitle>
 
@@ -23,7 +24,7 @@ else if (productos != null && productos.Any())
                         <p class="card-text">@producto.Descripcion</p>
                         <p class="card-text"><strong>Precio:</strong> $@producto.Precio</p>
                         <p class="card-text"><strong>Stock:</strong> @producto.Stock</p>
-                        <button class="btn btn-primary" disabled>Agregar al carrito</button>
+                        <button class="btn btn-primary" @onclick="() => AgregarAlCarrito(producto)">Agregar al carrito</button>
                     </div>
                 </div>
             </div>
@@ -58,5 +59,10 @@ else
         {
             cargando = false;
         }
+    }
+
+    private void AgregarAlCarrito(Producto producto)
+    {
+        CarritoService.AgregarAlCarrito(producto, 1);
     }
 }
