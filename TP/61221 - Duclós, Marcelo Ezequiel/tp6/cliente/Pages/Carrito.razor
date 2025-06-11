@@ -1,6 +1,7 @@
 @page "/carrito"
 @using cliente.Models
 @inject CarritoService CarritoService
+@inject ApiService ApiService
 
 <h1>Carrito de Compras</h1>
 
@@ -26,12 +27,7 @@ else
                 <tr>
                     <td>@item.Producto.Nombre</td>
                     <td>$@item.Producto.Precio</td>
-                    <td>
-                        <input type="number" min="1" style="width:60px"
-                               @bind="item.Cantidad"
-                               @bind:event="oninput"
-                               @onchange="(e) => CambiarCantidad(item, e)" />
-                    </td>
+                    <td>@item.Cantidad</td>
                     <td>$@(item.Producto.Precio * item.Cantidad)</td>
                     <td>
                         <button class="btn btn-danger btn-sm" @onclick="() => Quitar(item.Producto.Id)">Quitar</button>
@@ -40,30 +36,74 @@ else
             }
         </tbody>
     </table>
-    <button class="btn btn-warning" @onclick="Vaciar">Vaciar carrito</button>
+
+    <EditForm Model="@ventaForm" OnValidSubmit="FinalizarCompra">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <InputText class="form-control" @bind-Value="ventaForm.NombreCliente" />
+        </div>
+        <div class="mb-3">
+            <label>Apellido</label>
+            <InputText class="form-control" @bind-Value="ventaForm.ApellidoCliente" />
+        </div>
+        <div class="mb-3">
+            <label>Email</label>
+            <InputText class="form-control" @bind-Value="ventaForm.EmailCliente" />
+        </div>
+        <button class="btn btn-success" type="submit">Finalizar compra</button>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert alert-info mt-3">@mensaje</div>
+    }
 }
 
 @code {
-    private void Quitar(int productoId)
+    private RegistrarVentaRequest ventaForm = new RegistrarVentaRequest();
+    private string mensaje;
+
+    protected override void OnInitialized()
     {
-        CarritoService.QuitarDelCarrito(productoId);
+        ActualizarDetalles();
     }
 
-    private void Vaciar()
+    private void ActualizarDetalles()
     {
-        CarritoService.VaciarCarrito();
+        ventaForm.Detalles = CarritoService.Items
+            .Select(i => new DetalleVentaRequest { ProductoId = i.Producto.Id, Cantidad = i.Cantidad })
+            .ToList();
     }
 
-    private void CambiarCantidad(CarritoItem item, ChangeEventArgs e)
+    private async Task FinalizarCompra()
     {
-        if (int.TryParse(e.Value?.ToString(), out int nuevaCantidad) && nuevaCantidad > 0)
+        ActualizarDetalles();
+
+        if (!ventaForm.Detalles.Any())
         {
-            item.Cantidad = nuevaCantidad;
+            mensaje = "El carrito está vacío.";
+            return;
+        }
+
+        var exito = await ApiService.RegistrarVentaAsync(ventaForm);
+        if (exito)
+        {
+            mensaje = "¡Compra registrada con éxito!";
+            CarritoService.VaciarCarrito();
+            ActualizarDetalles();
         }
         else
         {
-            item.Cantidad = 1;
+            mensaje = "Ocurrió un error al registrar la compra.";
         }
-        StateHasChanged();
+    }
+
+    private void Quitar(int productoId)
+    {
+        CarritoService.QuitarDelCarrito(productoId);
+        ActualizarDetalles();
     }
 }

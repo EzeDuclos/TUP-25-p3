@@ -17,4 +17,10 @@ public class ApiService
     {
         return await _httpClient.GetFromJsonAsync<List<Producto>>("/api/productos") ?? new List<Producto>();
     }
+
+    public async Task<bool> RegistrarVentaAsync(RegistrarVentaRequest venta)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/ventas", venta);
+        return response.IsSuccessStatusCode;
+    }
 }
