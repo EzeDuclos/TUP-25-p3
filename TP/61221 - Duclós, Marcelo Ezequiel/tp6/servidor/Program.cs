@@ -50,6 +50,15 @@ app.MapGet("/api/productos/{id:int}", async (int id, TiendaContext db) =>
 
 app.MapPost("/api/productos", async (Producto producto, TiendaContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(producto.Nombre) ||
+        string.IsNullOrWhiteSpace(producto.Descripcion) ||
+        producto.Precio < 0 ||
+        producto.Stock < 0 ||
+        string.IsNullOrWhiteSpace(producto.ImagenUrl))
+    {
+        return Results.BadRequest("Todos los campos son obligatorios y los valores numéricos deben ser no negativos.");
+    }
+
     db.Productos.Add(producto);
     await db.SaveChangesAsync();
     return Results.Created($"/api/productos/{producto.Id}", producto);
@@ -59,6 +68,15 @@ app.MapPut("/api/productos/{id:int}", async (int id, Producto input, TiendaConte
 {
     var producto = await db.Productos.FindAsync(id);
     if (producto is null) return Results.NotFound();
+
+    if (string.IsNullOrWhiteSpace(input.Nombre) ||
+        string.IsNullOrWhiteSpace(input.Descripcion) ||
+        input.Precio < 0 ||
+        input.Stock < 0 ||
+        string.IsNullOrWhiteSpace(input.ImagenUrl))
+    {
+        return Results.BadRequest("Todos los campos son obligatorios y los valores numéricos deben ser no negativos.");
+    }
 
     producto.Nombre = input.Nombre;
     producto.Descripcion = input.Descripcion;
@@ -94,6 +112,13 @@ app.MapGet("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
 
 app.MapPost("/api/clientes", async (Cliente cliente, TiendaContext db) =>
 {
+    if (string.IsNullOrWhiteSpace(cliente.Nombre) ||
+        string.IsNullOrWhiteSpace(cliente.Apellido) ||
+        string.IsNullOrWhiteSpace(cliente.Email))
+    {
+        return Results.BadRequest("Nombre, Apellido y Email son obligatorios.");
+    }
+
     db.Clientes.Add(cliente);
     await db.SaveChangesAsync();
     return Results.Created($"/api/clientes/{cliente.Id}", cliente);
@@ -103,6 +128,13 @@ app.MapPut("/api/clientes/{id:int}", async (int id, Cliente input, TiendaContext
 {
     var cliente = await db.Clientes.FindAsync(id);
     if (cliente is null) return Results.NotFound();
+
+    if (string.IsNullOrWhiteSpace(input.Nombre) ||
+        string.IsNullOrWhiteSpace(input.Apellido) ||
+        string.IsNullOrWhiteSpace(input.Email))
+    {
+        return Results.BadRequest("Nombre, Apellido y Email son obligatorios.");
+    }
 
     cliente.Nombre = input.Nombre;
     cliente.Apellido = input.Apellido;
@@ -122,13 +154,30 @@ app.MapDelete("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
     return Results.NoContent();
 });
 
-// Endpoint POST para ventas con validación de stock
+// Endpoint POST para ventas con validación de stock y de entrada
 
 app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaContext db) =>
 {
-    // Validar stock
+    // Validar datos del cliente
+    if (string.IsNullOrWhiteSpace(ventaRequest.NombreCliente) ||
+        string.IsNullOrWhiteSpace(ventaRequest.ApellidoCliente) ||
+        string.IsNullOrWhiteSpace(ventaRequest.EmailCliente))
+    {
+        return Results.BadRequest("Nombre, Apellido y Email del cliente son obligatorios.");
+    }
+
+    // Validar que haya al menos un producto en la venta
+    if (ventaRequest.Detalles == null || !ventaRequest.Detalles.Any())
+    {
+        return Results.BadRequest("La venta debe contener al menos un producto.");
+    }
+
+    // Validar stock y cantidades
     foreach (var item in ventaRequest.Detalles)
     {
+        if (item.Cantidad <= 0)
+            return Results.BadRequest("La cantidad de cada producto debe ser mayor a cero.");
+
         var producto = await db.Productos.FindAsync(item.ProductoId);
         if (producto == null)
             return Results.BadRequest($"Producto con ID {item.ProductoId} no existe.");
