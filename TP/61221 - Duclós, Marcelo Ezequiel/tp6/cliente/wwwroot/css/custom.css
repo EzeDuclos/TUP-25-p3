@@ -1,0 +1,60 @@
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(120deg, #f8f9fa 60%, #e9ecef 100%);
+    margin-bottom: 40px;
+}
+.card {
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: none;
+    background: #fff;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-4px) scale(1.01);
+}
+.card-title {
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+.card-text {
+    color: #444;
+}
+.btn-primary {
+    background: #007bff;
+    border: none;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.btn-primary:hover {
+    background: #0056b3;
+}
+body.dark-mode {
+    background: #181824 !important;
+    color: #f1f1f1 !important;
+}
+body.dark-mode .main-navbar,
+body.dark-mode .sidebar {
+    background: #232336 !important;
+}
+body.dark-mode .card {
+    background: #232336;
+    color: #f1f1f1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+body.dark-mode .btn-primary {
+    background: #6c63ff;
+    color: #fff;
+}
+body.dark-mode .btn-outline-secondary {
+    border-color: #aaa;
+    color: #aaa;
+}
+body.dark-mode .nav-link {
+    color: #fff !important;
+}
+body.dark-mode .nav-link.active, body.dark-mode .nav-link:hover {
+    color: #ffd700 !important;
+    background: #3a0647 !important;
+}

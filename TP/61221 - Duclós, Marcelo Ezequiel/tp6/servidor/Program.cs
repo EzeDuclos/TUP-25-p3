@@ -29,6 +29,7 @@ if (app.Environment.IsDevelopment()) {
 
 // Usar CORS con la política definida
 app.UseCors("AllowClientApp");
+app.UseStaticFiles();
 
 // Mapear rutas básicas
 app.MapGet("/", () => "Servidor API está en funcionamiento");
@@ -110,6 +111,12 @@ app.MapGet("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
         : Results.NotFound()
 );
 
+app.MapGet("/api/clientes/email/{email}", async (string email, TiendaContext db) =>
+    await db.Clientes.FirstOrDefaultAsync(c => c.Email == email) is Cliente cliente
+        ? Results.Ok(cliente)
+        : Results.NotFound()
+);
+
 app.MapPost("/api/clientes", async (Cliente cliente, TiendaContext db) =>
 {
     if (string.IsNullOrWhiteSpace(cliente.Nombre) ||
@@ -185,6 +192,20 @@ app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaCont
             return Results.BadRequest($"Stock insuficiente para el producto {producto.Nombre}.");
     }
 
+    // Crear el cliente si no existe
+    var cliente = await db.Clientes.FirstOrDefaultAsync(c => c.Email == ventaRequest.EmailCliente);
+    if (cliente == null)
+    {
+        cliente = new Cliente
+        {
+            Nombre = ventaRequest.NombreCliente,
+            Apellido = ventaRequest.ApellidoCliente,
+            Email = ventaRequest.EmailCliente
+        };
+        db.Clientes.Add(cliente);
+        await db.SaveChangesAsync();
+    }
+
     // Crear la venta
     var venta = new Venta
     {
@@ -234,5 +255,108 @@ app.MapGet("/api/ventas/cliente/{clienteId:int}", async (int clienteId, TiendaCo
 
     return Results.Ok(ventas);
 });
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TiendaContext>();
+    db.Database.EnsureCreated();
+
+    if (!db.Productos.Any())
+    {
+        db.Productos.AddRange(
+            new Producto
+            {
+                Nombre = "Smartphone Samsung Galaxy A54",
+                Descripcion = "Smartphone 5G de gama media, pantalla AMOLED de 6.4\", 6 GB RAM, 128 GB almacenamiento, cámara trasera de 50+12+5 MP, batería 5000 mAh, resistencia IP67.",
+                Precio = 173,
+                Stock = 10,
+                ImagenUrl = "/img/Smartphone-Samsung-Galaxy-A54.jpg",
+                Categoria = "Smartphones"
+            },
+            new Producto
+            {
+                Nombre = "Notebook Lenovo IdeaPad 3",
+                Descripcion = "Laptop de uso general, pantalla de 15\" FHD, procesador Intel o AMD, buen equilibrio entre rendimiento y precio, ideal para tareas diarias.",
+                Precio = 409,
+                Stock = 10,
+                ImagenUrl = "/img/Notebook-Lenovo-IdeaPad-3.jpg",
+                Categoria = "Notebooks"
+            },
+            new Producto
+            {
+                Nombre = "Auriculares Bluetooth JBL Tune 510BT",
+                Descripcion = "Auriculares inalámbricos supraaurales, batería de hasta 40h, entrada auxiliar 3.5mm, audio JBL Pure Bass.",
+                Precio = 59,
+                Stock = 10,
+                ImagenUrl = "/img/Auriculares-Bluetooth-JBL-Tune-510BT.jpg",
+                Categoria = "Audio"
+            },
+            new Producto
+            {
+                Nombre = "Mouse inalambrico Logitech M185",
+                Descripcion = "Mouse óptico inalámbrico de 3 botones, nano receptor USB, batería duradera (~1 año).",
+                Precio = 18,
+                Stock = 10,
+                ImagenUrl = "/img/Mouse-inalámbrico-Logitech-M185.jpg",
+                Categoria = "Perifericos"
+            },
+            new Producto
+            {
+                Nombre = "Teclado mecanico Redragon Kumara",
+                Descripcion = "Teclado compacto (87 teclas), retroiluminación RGB, switches mecánicos Outemu, resistente.",
+                Precio = 45,
+                Stock = 10,
+                ImagenUrl = "/img/Teclado-mecánico-Redragon-Kumara.jpg",
+                Categoria = "Perifericos"
+            },
+            new Producto
+            {
+                Nombre = "Monitor LG 24 Full HD",
+                Descripcion = "Monitor LED de 24\", resolución 1920x1080, tiempo de respuesta 5ms, conexiones HDMI y VGA.",
+                Precio = 130,
+                Stock = 10,
+                ImagenUrl = "/img/Monitor-LG-24-Pulgadas-Full-HD.jpg",
+                Categoria = "Monitores"
+            },
+            new Producto
+            {
+                Nombre = "Tablet Samsung Galaxy Tab A8",
+                Descripcion = "Tablet de 10.5\", 3 GB RAM, 32/64 GB almacenamiento, batería de 7040 mAh, ideal para multimedia.",
+                Precio = 230,
+                Stock = 10,
+                ImagenUrl = "/img/Tablet-Samsung-Galaxy-Tab-A8.jpg",
+                Categoria = "Tablets"
+            },
+            new Producto
+            {
+                Nombre = "Smartwatch Xiaomi Mi Band 7",
+                Descripcion = "Pulsera de actividad con pantalla AMOLED 1.62\", monitoreo de salud (ritmo, sueño), duración de batería 14 días.",
+                Precio = 50,
+                Stock = 10,
+                ImagenUrl = "/img/Smartwatch-Xiaomi-Mi-Band-7.jpg",
+                Categoria = "Wearables"
+            },
+            new Producto
+            {
+                Nombre = "Parlante portatil JBL Flip 6",
+                Descripcion = "Altavoz Bluetooth portátil, resistente al agua (IPX7), 12h de batería, sonido JBL Pro Sound.",
+                Precio = 130,
+                Stock = 10,
+                ImagenUrl = "/img/Parlante-portátil-JBL-Flip-6.jpg",
+                Categoria = "Audio"
+            },
+            new Producto
+            {
+                Nombre = "Disco SSD Kingston 480GB",
+                Descripcion = "SSD SATA de 480GB, velocidades de lectura/escritura de hasta 550/520 MB/s, hasta 3 años de garantía.",
+                Precio = 45,
+                Stock = 10,
+                ImagenUrl = "/img/Disco-SSD-Kingston-480-GB.jpg",
+                Categoria = "Almacenamiento"
+            }
+        );
+        db.SaveChanges();
+    }
+}
 
 app.Run();

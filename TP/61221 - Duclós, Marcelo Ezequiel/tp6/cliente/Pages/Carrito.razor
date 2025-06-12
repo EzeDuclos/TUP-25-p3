@@ -2,6 +2,7 @@
 @using cliente.Models
 @inject CarritoService CarritoService
 @inject ApiService ApiService
+@inject IJSRuntime JS
 
 <h1>Carrito de Compras</h1>
 
@@ -94,6 +95,8 @@ else
             mensaje = "¡Compra registrada con éxito!";
             CarritoService.VaciarCarrito();
             ActualizarDetalles();
+            // Recargar productos para actualizar stock
+            await JS.InvokeVoidAsync("location.reload");
         }
         else
         {
