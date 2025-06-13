@@ -1,4 +1,4 @@
-namespace cliente.Models;
+namespace servidor.Models;
 
 public class Producto
 {
@@ -8,4 +8,5 @@ public class Producto
     public decimal Precio { get; set; }
     public int Stock { get; set; }
     public string ImagenUrl { get; set; }
+    public string Categoria { get; set; }  // Agregamos esta propiedad
 }

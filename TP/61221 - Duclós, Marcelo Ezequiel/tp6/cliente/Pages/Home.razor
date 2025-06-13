@@ -2,51 +2,27 @@
 @using cliente.Models
 @inject ApiService ApiService
 @inject CarritoService CarritoService
+@inject IJSRuntime JS
 
-<PageTitle>Productos</PageTitle>
-
-@if (mostrarToast)
-{
-    <div class="toast align-items-center text-bg-success border-0 show position-fixed bottom-0 end-0 m-4" style="z-index:9999; min-width:220px;">
-        <div class="d-flex">
-            <div class="toast-body">
-                <span class="bi bi-check-circle me-2"></span>@toastMensaje
-            </div>
+<div class="catalogo-container">
+    <h1 class="text-center mb-4">Catálogo de Productos</h1>
+    
+    <div class="mb-4">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" 
+                   class="form-control form-control-lg" 
+                   placeholder="Buscar productos..." 
+                   @bind="busqueda" 
+                   @bind:event="oninput" />
         </div>
     </div>
-}
 
-@if (productoSeleccionado != null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5);" @onclick="CerrarModal">
-        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@productoSeleccionado.Nombre</h5>
-                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <img src="@($"http://localhost:5184{productoSeleccionado.ImagenUrl}")"
-                         alt="@productoSeleccionado.Nombre"
-                         style="max-width: 250px; max-height: 250px; object-fit: contain; margin-bottom: 1rem;" />
-                    <p class="mt-2">@productoSeleccionado.Descripcion</p>
-                    <p><strong>Precio:</strong> USD @productoSeleccionado.Precio.ToString("F2")</p>
-                    <p><strong>Stock:</strong> @productoSeleccionado.Stock</p>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CerrarModal">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<div class="container">
-    <h2 class="my-4 text-center">Catálogo de Productos</h2>
-    <input class="form-control mb-4" placeholder="Buscar producto..." @bind="busqueda" />
     @if (cargando)
     {
-        <div class="d-flex justify-content-center align-items-center" style="height: 200px;">
+        <div class="d-flex justify-content-center py-5">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando...</span>
             </div>
@@ -54,30 +30,29 @@
     }
     else if (productos != null && productos.Any())
     {
-        <div class="row justify-content-center">
-            @foreach (var producto in productos.Where(p => string.IsNullOrWhiteSpace(busqueda) || p.Nombre.Contains(busqueda, StringComparison.OrdinalIgnoreCase)))
+        <div class="productos-grid">
+            @foreach (var producto in productos.Where(p => 
+                string.IsNullOrWhiteSpace(busqueda) || 
+                p.Nombre.Contains(busqueda, StringComparison.OrdinalIgnoreCase)))
             {
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4 d-flex align-items-stretch">
-                    <div class="card shadow-sm w-100">
-                        <img src="@($"http://localhost:5184{producto.ImagenUrl}")" class="card-img-top" alt="@producto.Nombre" style="max-height:200px;object-fit:contain;">
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title">@producto.Nombre</h5>
-                            <p><strong>Precio:</strong> USD @producto.Precio.ToString("F2")</p>
-                            @if (producto.Stock <= 3)
-                            {
-                                <p><span class="badge bg-danger">¡Últimas unidades!</span></p>
-                            }
-                            else
-                            {
-                                <p><strong>Stock:</strong> @producto.Stock</p>
-                            }
-                            <button class="btn btn-primary mt-auto mb-2 d-flex align-items-center justify-content-center gap-2"
-                                    @onclick="() => AgregarAlCarrito(producto)">
-                                <span class="bi bi-cart-plus"></span> Agregar al carrito
+                <div class="producto-card">
+                    <img src="@($"http://localhost:5184{producto.ImagenUrl}")" 
+                         class="producto-imagen" 
+                         alt="@producto.Nombre">
+                    <div class="producto-detalles">
+                        <h4 class="mb-2">@producto.Nombre</h4>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">USD @producto.Precio.ToString("N2")</h5>
+                            <span class="@(producto.Stock <= 3 ? "badge bg-danger" : "text-muted")">
+                                @(producto.Stock <= 3 ? $"¡Últimas {producto.Stock} unidades!" : $"Stock: {producto.Stock}")
+                            </span>
+                        </div>
+                        <div class="d-grid gap-2 mt-auto">
+                            <button class="btn btn-primary" @onclick="() => AgregarAlCarrito(producto)">
+                                <i class="bi bi-cart-plus me-2"></i>Agregar al carrito
                             </button>
-                            <button class="btn btn-outline-secondary mb-2 d-flex align-items-center justify-content-center gap-2"
-                                    @onclick="() => MostrarModal(producto)">
-                                <span class="bi bi-info-circle"></span> Ver detalles
+                            <button class="btn btn-outline-secondary" @onclick="() => MostrarModal(producto)">
+                                <i class="bi bi-info-circle me-2"></i>Ver detalles
                             </button>
                         </div>
                     </div>
@@ -85,15 +60,55 @@
             }
         </div>
     }
-    else if (error != null)
-    {
-        <div class="alert alert-danger">@error</div>
-    }
-    else
-    {
-        <div>No hay productos disponibles.</div>
-    }
 </div>
+
+@if (mostrarToast)
+{
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi bi-cart-check me-2"></i>
+                <strong class="me-auto">Producto agregado</strong>
+                <button type="button" class="btn-close" @onclick="() => mostrarToast = false"></button>
+            </div>
+            <div class="toast-body">
+                @toastMensaje
+            </div>
+        </div>
+    </div>
+}
+
+@if (productoSeleccionado != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@productoSeleccionado.Nombre</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <img src="@($"http://localhost:5184{productoSeleccionado.ImagenUrl}")" 
+                         class="img-fluid mb-3" 
+                         alt="@productoSeleccionado.Nombre">
+                    <p>@productoSeleccionado.Descripcion</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">USD @productoSeleccionado.Precio.ToString("N2")</h5>
+                        <span class="@(productoSeleccionado.Stock <= 3 ? "badge bg-danger" : "text-muted")">
+                            Stock: @productoSeleccionado.Stock
+                        </span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" @onclick="() => AgregarAlCarrito(productoSeleccionado)">
+                        <i class="bi bi-cart-plus me-2"></i>Agregar al carrito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private List<Producto> productos;
@@ -101,7 +116,6 @@
     private bool cargando = true;
     private bool mostrarToast = false;
     private string toastMensaje = "";
-
     private Producto productoSeleccionado;
     private string busqueda = "";
 
@@ -126,14 +140,12 @@
         CarritoService.AgregarAlCarrito(producto, 1);
         toastMensaje = $"{producto.Nombre} agregado al carrito";
         mostrarToast = true;
-        _ = OcultarToast();
-    }
-
-    private async Task OcultarToast()
-    {
-        await Task.Delay(1800);
-        mostrarToast = false;
-        StateHasChanged();
+        InvokeAsync(async () =>
+        {
+            await Task.Delay(3000);
+            mostrarToast = false;
+            StateHasChanged();
+        });
     }
 
     private void MostrarModal(Producto producto)

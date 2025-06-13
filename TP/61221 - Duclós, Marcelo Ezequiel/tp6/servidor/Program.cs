@@ -165,95 +165,119 @@ app.MapDelete("/api/clientes/{id:int}", async (int id, TiendaContext db) =>
 
 app.MapPost("/api/ventas", async (RegistrarVentaRequest ventaRequest, TiendaContext db) =>
 {
-    // Validar datos del cliente
-    if (string.IsNullOrWhiteSpace(ventaRequest.NombreCliente) ||
-        string.IsNullOrWhiteSpace(ventaRequest.ApellidoCliente) ||
-        string.IsNullOrWhiteSpace(ventaRequest.EmailCliente))
+    using var transaction = await db.Database.BeginTransactionAsync();
+    try
     {
-        return Results.BadRequest("Nombre, Apellido y Email del cliente son obligatorios.");
-    }
+        // 1. Validar datos básicos
+        if (string.IsNullOrWhiteSpace(ventaRequest.EmailCliente))
+            return Results.BadRequest("El email es obligatorio");
 
-    // Validar que haya al menos un producto en la venta
-    if (ventaRequest.Detalles == null || !ventaRequest.Detalles.Any())
-    {
-        return Results.BadRequest("La venta debe contener al menos un producto.");
-    }
-
-    // Validar stock y cantidades
-    foreach (var item in ventaRequest.Detalles)
-    {
-        if (item.Cantidad <= 0)
-            return Results.BadRequest("La cantidad de cada producto debe ser mayor a cero.");
-
-        var producto = await db.Productos.FindAsync(item.ProductoId);
-        if (producto == null)
-            return Results.BadRequest($"Producto con ID {item.ProductoId} no existe.");
-        if (producto.Stock < item.Cantidad)
-            return Results.BadRequest($"Stock insuficiente para el producto {producto.Nombre}.");
-    }
-
-    // Crear el cliente si no existe
-    var cliente = await db.Clientes.FirstOrDefaultAsync(c => c.Email == ventaRequest.EmailCliente);
-    if (cliente == null)
-    {
-        cliente = new Cliente
+        // 2. Crear o actualizar cliente
+        var cliente = await db.Clientes.FirstOrDefaultAsync(c => c.Email == ventaRequest.EmailCliente);
+        if (cliente == null)
         {
-            Nombre = ventaRequest.NombreCliente,
-            Apellido = ventaRequest.ApellidoCliente,
-            Email = ventaRequest.EmailCliente
+            cliente = new Cliente
+            {
+                Nombre = ventaRequest.NombreCliente,
+                Apellido = ventaRequest.ApellidoCliente,
+                Email = ventaRequest.EmailCliente
+            };
+            db.Clientes.Add(cliente);
+            await db.SaveChangesAsync();
+        }
+
+        // 3. Validar productos y stock
+        var detalles = new List<DetalleVenta>();
+        decimal total = 0;
+
+        foreach (var detalle in ventaRequest.Detalles)
+        {
+            var producto = await db.Productos.FindAsync(detalle.ProductoId);
+            if (producto == null)
+                return Results.NotFound($"Producto {detalle.ProductoId} no encontrado");
+            
+            if (producto.Stock < detalle.Cantidad)
+                return Results.BadRequest($"Stock insuficiente para {producto.Nombre}");
+
+            producto.Stock -= detalle.Cantidad;
+
+            var detalleVenta = new DetalleVenta
+            {
+                ProductoId = producto.Id,
+                Cantidad = detalle.Cantidad,
+                PrecioUnitario = producto.Precio
+            };
+
+            detalles.Add(detalleVenta);
+            total += producto.Precio * detalle.Cantidad;
+        }
+
+        // 4. Crear la venta
+        var venta = new Venta
+        {
+            Fecha = DateTime.Now,
+            NombreCliente = ventaRequest.NombreCliente,
+            ApellidoCliente = ventaRequest.ApellidoCliente,
+            EmailCliente = ventaRequest.EmailCliente,
+            Total = total,
+            Detalles = detalles
         };
-        db.Clientes.Add(cliente);
+
+        db.Ventas.Add(venta);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Results.Ok(new { Message = "Venta registrada con éxito", VentaId = venta.Id });
     }
-
-    // Crear la venta
-    var venta = new Venta
+    catch (Exception ex)
     {
-        Fecha = DateTime.Now,
-        NombreCliente = ventaRequest.NombreCliente,
-        ApellidoCliente = ventaRequest.ApellidoCliente,
-        EmailCliente = ventaRequest.EmailCliente,
-        Total = 0,
-        Detalles = new List<DetalleVenta>()
-    };
-
-    decimal total = 0;
-
-    foreach (var item in ventaRequest.Detalles)
-    {
-        var producto = await db.Productos.FindAsync(item.ProductoId);
-        if (producto == null) continue;
-
-        producto.Stock -= item.Cantidad;
-
-        var detalle = new DetalleVenta
-        {
-            ProductoId = producto.Id,
-            Cantidad = item.Cantidad,
-            PrecioUnitario = producto.Precio
-        };
-        total += producto.Precio * item.Cantidad;
-        venta.Detalles.Add(detalle);
+        await transaction.RollbackAsync();
+        return Results.BadRequest($"Error al procesar la venta: {ex.Message}");
     }
-
-    venta.Total = total;
-    db.Ventas.Add(venta);
-    await db.SaveChangesAsync();
-
-    return Results.Created($"/api/ventas/{venta.Id}", venta);
 });
 
-// Endpoint para consultar historial de compras de un cliente
-
-app.MapGet("/api/ventas/cliente/{clienteId:int}", async (int clienteId, TiendaContext db) =>
+// Agregar endpoint para consultar historial
+app.MapGet("/api/ventas/historial/{email}", async (string email, TiendaContext db) =>
 {
-    var ventas = await db.Ventas
-        .Where(v => v.EmailCliente == db.Clientes.Where(c => c.Id == clienteId).Select(c => c.Email).FirstOrDefault())
-        .Include(v => v.Detalles)
-        .ThenInclude(d => d.Producto)
-        .ToListAsync();
+    try
+    {
+        var ventas = await db.Ventas
+            .Include(v => v.Detalles)
+                .ThenInclude(d => d.Producto)
+            .Where(v => v.EmailCliente.ToLower().Trim() == email.ToLower().Trim())
+            .OrderByDescending(v => v.Fecha)
+            .Select(v => new
+            {
+                v.Id,
+                v.Fecha,
+                v.Total,
+                v.NombreCliente,
+                v.ApellidoCliente,
+                v.EmailCliente,
+                Detalles = v.Detalles.Select(d => new
+                {
+                    d.Id,
+                    d.Cantidad,
+                    d.PrecioUnitario,
+                    Producto = new
+                    {
+                        d.Producto.Id,
+                        d.Producto.Nombre,
+                        d.Producto.Precio,
+                        d.Producto.Stock,
+                        d.Producto.ImagenUrl
+                    }
+                }).ToList()
+            })
+            .ToListAsync();
 
-    return Results.Ok(ventas);
+        return Results.Ok(ventas);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error al buscar historial: {ex.Message}");
+        return Results.BadRequest($"Error: {ex.Message}");
+    }
 });
 
 using (var scope = app.Services.CreateScope())

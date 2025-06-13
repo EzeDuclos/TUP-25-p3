@@ -3,6 +3,7 @@
 @inject CarritoService CarritoService
 @inject ApiService ApiService
 @inject IJSRuntime JS
+@inject NavigationManager NavigationManager
 
 <h1>Carrito de Compras</h1>
 
@@ -66,6 +67,7 @@ else
 @code {
     private RegistrarVentaRequest ventaForm = new RegistrarVentaRequest();
     private string mensaje;
+    private bool mostrarModalExito = false;
 
     protected override void OnInitialized()
     {
@@ -81,6 +83,12 @@ else
 
     private async Task FinalizarCompra()
     {
+        if (string.IsNullOrWhiteSpace(ventaForm.EmailCliente))
+        {
+            mensaje = "El email es obligatorio";
+            return;
+        }
+
         ActualizarDetalles();
 
         if (!ventaForm.Detalles.Any())
@@ -92,11 +100,11 @@ else
         var exito = await ApiService.RegistrarVentaAsync(ventaForm);
         if (exito)
         {
-            mensaje = "¡Compra registrada con éxito!";
+            mostrarModalExito = true;
             CarritoService.VaciarCarrito();
-            ActualizarDetalles();
-            // Recargar productos para actualizar stock
-            await JS.InvokeVoidAsync("location.reload");
+            ventaForm = new RegistrarVentaRequest();
+            await Task.Delay(2000);
+            NavigationManager.NavigateTo("/", true);
         }
         else
         {
@@ -109,4 +117,24 @@ else
         CarritoService.QuitarDelCarrito(productoId);
         ActualizarDetalles();
     }
+}
+
+@if (mostrarModalExito)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="mb-3">¡Compra realizada con éxito!</h4>
+                    <p class="mb-4">Tu pedido ha sido registrado correctamente.</p>
+                    <button class="btn btn-primary" @onclick="@(() => NavigationManager.NavigateTo("/"))">
+                        <i class="bi bi-arrow-left me-2"></i>Volver al inicio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
