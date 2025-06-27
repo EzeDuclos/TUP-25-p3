@@ -22,7 +22,37 @@
 
         function Calculadora(){
             // Poner aca el JavaScript
-            return <h1><center>1+2=?</center></h1>;
+            return (
+                <div className="calculadora">
+                    <div className="pantalla">0</div>
+                    
+                    <div className="botones">
+                        <button className="boton gris">AC</button>
+                        <button className="boton gris">+/-</button>
+                        <button className="boton gris">%</button>
+                        <button className="boton naranja">÷</button>
+                        
+                        <button className="boton negro">7</button>
+                        <button className="boton negro">8</button>
+                        <button className="boton negro">9</button>
+                        <button className="boton naranja">×</button>
+                        
+                        <button className="boton negro">4</button>
+                        <button className="boton negro">5</button>
+                        <button className="boton negro">6</button>
+                        <button className="boton naranja">-</button>
+                        
+                        <button className="boton negro">1</button>
+                        <button className="boton negro">2</button>
+                        <button className="boton negro">3</button>
+                        <button className="boton naranja">+</button>
+                        
+                        <button className="boton negro cero">0</button>
+                        <button className="boton negro">.</button>
+                        <button className="boton naranja">=</button>
+                    </div>
+                </div>
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
