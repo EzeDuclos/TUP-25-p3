@@ -21,10 +21,15 @@
         const { useState, useEffect } = React;
 
         function Calculadora(){
-            // Poner aca el JavaScript
+            // Estados para controlar los datos de la calculadora
+            const [pantalla, setPantalla] = useState('0');
+            const [valorAnterior, setValorAnterior] = useState(null);
+            const [operacion, setOperacion] = useState(null);
+            const [esperandoOperando, setEsperandoOperando] = useState(false);
+            
             return (
                 <div className="calculadora">
-                    <div className="pantalla">0</div>
+                    <div className="pantalla">{pantalla}</div>
                     
                     <div className="botones">
                         <button className="boton gris">AC</button>
