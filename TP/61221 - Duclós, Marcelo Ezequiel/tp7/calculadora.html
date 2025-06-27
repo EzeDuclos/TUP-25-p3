@@ -27,34 +27,118 @@
             const [operacion, setOperacion] = useState(null);
             const [esperandoOperando, setEsperandoOperando] = useState(false);
             
+            // Función para manejar números
+            const manejarNumero = (num) => {
+                if (esperandoOperando) {
+                    setPantalla(String(num));
+                    setEsperandoOperando(false);
+                } else {
+                    setPantalla(pantalla === '0' ? String(num) : pantalla + num);
+                }
+            };
+            
+            // Función para manejar operaciones
+            const manejarOperacion = (siguienteOperacion) => {
+                const valorActual = parseFloat(pantalla);
+                
+                if (valorAnterior === null) {
+                    setValorAnterior(valorActual);
+                } else if (operacion) {
+                    const resultado = calcular();
+                    setPantalla(String(resultado));
+                    setValorAnterior(resultado);
+                }
+                
+                setEsperandoOperando(true);
+                setOperacion(siguienteOperacion);
+            };
+            
+            // Función para calcular resultado
+            const calcular = () => {
+                const anterior = valorAnterior;
+                const actual = parseFloat(pantalla);
+                
+                switch (operacion) {
+                    case '+':
+                        return anterior + actual;
+                    case '-':
+                        return anterior - actual;
+                    case '×':
+                        return anterior * actual;
+                    case '÷':
+                        return anterior / actual;
+                    default:
+                        return actual;
+                }
+            };
+            
+            // Función para manejar igual
+            const manejarIgual = () => {
+                if (operacion && valorAnterior !== null) {
+                    const resultado = calcular();
+                    setPantalla(String(resultado));
+                    setValorAnterior(null);
+                    setOperacion(null);
+                    setEsperandoOperando(true);
+                }
+            };
+            
+            // Función para limpiar (AC)
+            const limpiar = () => {
+                setPantalla('0');
+                setValorAnterior(null);
+                setOperacion(null);
+                setEsperandoOperando(false);
+            };
+            
+            // Función para cambiar signo (+/-)
+            const cambiarSigno = () => {
+                setPantalla(String(parseFloat(pantalla) * -1));
+            };
+            
+            // Función para porcentaje
+            const porcentaje = () => {
+                setPantalla(String(parseFloat(pantalla) / 100));
+            };
+            
+            // Función para punto decimal
+            const agregarPunto = () => {
+                if (esperandoOperando) {
+                    setPantalla('0.');
+                    setEsperandoOperando(false);
+                } else if (pantalla.indexOf('.') === -1) {
+                    setPantalla(pantalla + '.');
+                }
+            };
+            
             return (
                 <div className="calculadora">
                     <div className="pantalla">{pantalla}</div>
                     
                     <div className="botones">
-                        <button className="boton gris">AC</button>
-                        <button className="boton gris">+/-</button>
-                        <button className="boton gris">%</button>
-                        <button className="boton naranja">÷</button>
+                        <button className="boton gris" onClick={limpiar}>AC</button>
+                        <button className="boton gris" onClick={cambiarSigno}>+/-</button>
+                        <button className="boton gris" onClick={porcentaje}>%</button>
+                        <button className="boton naranja" onClick={() => manejarOperacion('÷')}>÷</button>
                         
-                        <button className="boton negro">7</button>
-                        <button className="boton negro">8</button>
-                        <button className="boton negro">9</button>
-                        <button className="boton naranja">×</button>
+                        <button className="boton negro" onClick={() => manejarNumero(7)}>7</button>
+                        <button className="boton negro" onClick={() => manejarNumero(8)}>8</button>
+                        <button className="boton negro" onClick={() => manejarNumero(9)}>9</button>
+                        <button className="boton naranja" onClick={() => manejarOperacion('×')}>×</button>
                         
-                        <button className="boton negro">4</button>
-                        <button className="boton negro">5</button>
-                        <button className="boton negro">6</button>
-                        <button className="boton naranja">-</button>
+                        <button className="boton negro" onClick={() => manejarNumero(4)}>4</button>
+                        <button className="boton negro" onClick={() => manejarNumero(5)}>5</button>
+                        <button className="boton negro" onClick={() => manejarNumero(6)}>6</button>
+                        <button className="boton naranja" onClick={() => manejarOperacion('-')}>-</button>
                         
-                        <button className="boton negro">1</button>
-                        <button className="boton negro">2</button>
-                        <button className="boton negro">3</button>
-                        <button className="boton naranja">+</button>
+                        <button className="boton negro" onClick={() => manejarNumero(1)}>1</button>
+                        <button className="boton negro" onClick={() => manejarNumero(2)}>2</button>
+                        <button className="boton negro" onClick={() => manejarNumero(3)}>3</button>
+                        <button className="boton naranja" onClick={() => manejarOperacion('+')}>+</button>
                         
-                        <button className="boton negro cero">0</button>
-                        <button className="boton negro">.</button>
-                        <button className="boton naranja">=</button>
+                        <button className="boton negro cero" onClick={() => manejarNumero(0)}>0</button>
+                        <button className="boton negro" onClick={agregarPunto}>.</button>
+                        <button className="boton naranja" onClick={manejarIgual}>=</button>
                     </div>
                 </div>
             );
